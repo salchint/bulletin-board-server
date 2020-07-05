@@ -35,7 +35,7 @@ if(CMAKE_VERSION VERSION_LESS 2.8.11)
     )
 endif()
 
-#include_directories("${CMAKE_CURRENT_SOURCE_DIR}/../inc")
+include_directories("${CMAKE_CURRENT_SOURCE_DIR}/../src")
 
 # Now simply link your own targets against gtest, gmock,
 # etc. as appropriate
