@@ -18,15 +18,14 @@ file(
     #${CMAKE_CURRENT_SOURCE_DIR}/../inc/*.c
 )
 
-add_library(
-    Bulletin Board Server
-    SHARED
+add_executable(
+    bbserv
     ${sources}
     ${headers}
 )
 
 install(
-    TARGETS Bulletin Board Server
+    TARGETS bbserv
     DESTINATION lib
 )
 

@@ -1,3 +1,6 @@
+build/
+srs.pdf
+
 # Created by https://www.gitignore.io/api/c++,cmake,gcov
 
 ### C++ ###

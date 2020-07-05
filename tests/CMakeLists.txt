@@ -44,15 +44,14 @@ file(
     GLOB
     test_files
     *.cpp
-    ../inc/*.c
 )
 
-add_executable(Tests-Bulletin Board Server
+add_executable(Tests-bbserv
     ${test_files}
 )
 
-target_link_libraries(Tests-Bulletin Board Server
-    Bulletin Board Server
+target_link_libraries(Tests-bbserv
+    #bbserv
     #${GTEST_BOTH_LIBRARIES}
     gtest
     gtest_main
