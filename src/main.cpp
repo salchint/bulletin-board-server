@@ -1,6 +1,8 @@
 #include <iostream>
 #include <unistd.h>
+#include <pthread.h>
 #include "config.h"
+#include "InConnection.h"
 
 void print_usage() {
     std::cout << "bbserv - Bulletin Board Server" << std::endl;
@@ -50,6 +52,16 @@ int main(int argc, char *argv[]) {
             default:
                 break;
         }
+    }
+
+    InConnection inConnection;
+    try
+    {
+        inConnection.listen_on(Config::singleton().get_bport());
+    }
+    catch (const BBServException& error)
+    {
+        std::cout << error.what() << std::endl;
     }
 
     return 0;
