@@ -2,14 +2,18 @@
 
 #pragma once
 
+#include <iostream>
 #include <string>
+#include <string_view>
+#include <sstream>
+#include "BBServException.h"
 
 class Config {
     protected:
         std::string bbfile;
-        size_t Tmax = 4;
-        int bport = 0;
-        int sport = 0;
+        size_t Tmax = 20;
+        int bport = 9000;
+        int sport = 10000;
         bool isDaemon = true;
         bool isDebug = false;
 
@@ -70,4 +74,33 @@ class Config {
          */
         void set_debug(bool on)                     { this->isDebug = on; }
 };
+
+/**
+ *Print error messages.
+ */
+template<typename OriginT, typename... ArgsT>
+void error_return(OriginT origin, ArgsT... args)
+{
+    if (Config::singleton().is_debug())
+    {
+        std::stringstream sout;
+        sout << "ERROR - " << typeid(origin).name() << ": ";
+        (sout << ... << args) << ' ' << std::endl;
+        throw BBServException(sout.str());
+    }
+}
+
+/**
+ *Print debug messages.
+ */
+template<typename OriginT, typename... ArgsT>
+void debug_print(OriginT origin, ArgsT... args)
+{
+    if (Config::singleton().is_debug())
+    {
+        std::stringstream sout;
+        std::cout << "DBG   - " << typeid(origin).name() << ": ";
+        (std::cout << ... << args) << ' ' << std::endl;
+    }
+}
 
