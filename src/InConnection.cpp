@@ -50,7 +50,7 @@ void InConnection::open_incoming_conn(/*const std::string_view& ipaddress,*/ in_
         //error_return(this, "Invalid IP-address");
     //}
 
-    acceptAddress.sin_port = port;
+    acceptAddress.sin_port = htons(port);
     acceptAddress.sin_family = AF_INET;
     acceptAddress.sin_addr.s_addr = INADDR_ANY;
     if (0 != bind(this->acceptSocket, (struct sockaddr*)(&acceptAddress),
@@ -58,6 +58,8 @@ void InConnection::open_incoming_conn(/*const std::string_view& ipaddress,*/ in_
         //error_return(this, "Failed to bind socket to ", ipaddress);
         error_return(this, "Failed to bind socket to 0.0.0.0 :", port);
     }
+
+    debug_print(this, "Created socket and bound it to ", inet_ntoa(acceptAddress.sin_addr), ":", port);
 }
 
 /**
@@ -70,6 +72,7 @@ void InConnection::listen_for_clients()
     //pthread_attr_t clientThreadOptions;
 
     listen(this->acceptSocket, Config::singleton().get_Tmax());
+    debug_print(this, "Listening for incoming messages");
 
     //pthread_attr_init(&clientThreadOptions);
     //pthread_attr_setdetachstate(&clientThreadOptions,

@@ -8,8 +8,8 @@ void print_usage() {
     std::cout << "bbserv - Bulletin Board Server" << std::endl;
     std::cout << std::endl;
     std::cout << "Usage: bbserv [arguments] [peer..]" << std::endl;
-    std::cout << "  Peers must have the format 'host:port'. 0 or more are" << std::endl;
-    std::cout << "  allowed after the arguments." << std::endl;
+    std::cout << "  Peers must have the format 'host:port'. 0 or more are allowed after the" << std::endl;
+    std::cout << "  arguments." << std::endl;
     std::cout << std::endl;
     std::cout << "Arguments:" << std::endl;
     std::cout << "  -h Print this usage information." << std::endl;
@@ -17,8 +17,8 @@ void print_usage() {
     std::cout << "  -T overrides THMAX according to its argument." << std::endl;
     std::cout << "  -p overrides the port number bp according to its argument." << std::endl;
     std::cout << "  -s overrides the port number sp according to its argument." << std::endl;
-    std::cout << "  -f (with no argument) forces d to false." << std::endl;
-    std::cout << "  -d (with no argument) forces D to true." << std::endl;
+    std::cout << "  -f (with no argument) forces deamon behavior to false." << std::endl;
+    std::cout << "  -d (with no argument) forces debugging facilities to true." << std::endl;
 }
 
 int main(int argc, char *argv[]) {
