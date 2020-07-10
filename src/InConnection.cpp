@@ -57,7 +57,7 @@ void InConnection::open_incoming_conn(/*const std::string_view& ipaddress,*/ in_
     if (0 != bind(this->acceptSocket, (struct sockaddr*)(&acceptAddress),
             addressSize)) {
         //error_return(this, "Failed to bind socket to ", ipaddress);
-        error_return(this, "Failed to bind socket to 0.0.0.0 :", port);
+        error_return(this, "Failed to bind socket to 0.0.0.0:", port);
     }
 
     debug_print(this, "Created socket and bound it to ", inet_ntoa(acceptAddress.sin_addr), ":", port);

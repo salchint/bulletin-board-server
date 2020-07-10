@@ -3,7 +3,15 @@
 #include "ThreadPool.h"
 #include "Config.h"
 #include <errno.h>
+#include <string>
 #include <cstring>
+#include <cstdio>
+
+static void print_commands(FILE* stream)
+{
+    fputs("0.0 bbserv supported commands: [USER <name>|READ <msg-number>|WRITE <msg>|REPLACE <msg-number>/<msg>|QUIT <text>]\n", stream);
+    fflush(stream);
+}
 
 static void open_socket_stream(int socketNumber, FILE** stream)
 {
@@ -19,11 +27,11 @@ static void* thread_main(void* p)
     auto pool { reinterpret_cast<ThreadPool*>(p) };
     auto clientSocket { 0 };
     FILE* stream { nullptr };
-    char buffer[1024];
+    std::string buffer;
+    buffer.resize(1024);
 
     for (;;)
     {
-        *buffer = '\0';
         clientSocket = pool->get_connection();
 
         try
@@ -37,7 +45,8 @@ static void* thread_main(void* p)
             return nullptr;
         }
 
-        while (fgets(buffer, sizeof(buffer), stream))
+        print_commands(stream);
+        while (fgets(buffer.data(), buffer.size(), stream))
         {
             debug_print(pool, "Received on ", clientSocket, ": ", buffer);
         }
