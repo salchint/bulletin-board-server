@@ -4,6 +4,7 @@
 #include <sys/socket.h>
 #include <netinet/in.h>
 #include <cstring>
+#include <memory>
 #include <utility>
 #include <string_view>
 #include "ConnectionQueue.h"
@@ -14,10 +15,10 @@ class InConnection
 {
     protected:
         int acceptSocket {0};
-        ConnectionQueue connectionQueue;
+        std::shared_ptr<ConnectionQueue> connectionQueue;
 
     public:
-        InConnection();
+        InConnection(std::shared_ptr<ConnectionQueue>& qu);
         ~InConnection();
 
     public:

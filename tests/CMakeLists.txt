@@ -57,3 +57,5 @@ target_link_libraries(Tests-bbserv
     gtest_main
     pthread
 )
+
+target_compile_features(Tests-bbserv PUBLIC cxx_std_17)

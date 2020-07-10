@@ -4,14 +4,15 @@
 #include <sys/socket.h>
 #include <netinet/in.h>
 #include <arpa/inet.h>
-#include <pthread.h>
-#include "config.h"
+#include "Config.h"
 
-InConnection::InConnection()
+InConnection::InConnection(std::shared_ptr<ConnectionQueue>& qu)
 {
+    this->connectionQueue = qu;
 }
 
-InConnection::~InConnection() {
+InConnection::~InConnection()
+{
     if (this->acceptSocket) {
        close(this->acceptSocket);
        this->acceptSocket = 0;
@@ -93,10 +94,11 @@ void InConnection::listen_for_clients()
             //break;
         //}
 
-        this->connectionQueue.add(clientSocket);
+        debug_print(this, "Accepted client connection on ", clientSocket);
+        this->connectionQueue->add(clientSocket);
     }
 
-    //mapper_close_conn(acceptSocket);
+    close(acceptSocket);
     //pthread_attr_destroy(&clientThreadOptions);
 }
 

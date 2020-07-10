@@ -1,8 +1,11 @@
 #include <iostream>
+#include <memory>
 #include <unistd.h>
 #include <pthread.h>
-#include "config.h"
+#include "Config.h"
 #include "InConnection.h"
+#include "ThreadPool.h"
+#include "ConnectionQueue.h"
 
 void print_usage() {
     std::cout << "bbserv - Bulletin Board Server" << std::endl;
@@ -54,9 +57,14 @@ int main(int argc, char *argv[]) {
         }
     }
 
-    InConnection inConnection;
+    auto connectionQueue = std::make_shared<ConnectionQueue>();
+
+    InConnection inConnection(connectionQueue);
+    ThreadPool agents(Config::singleton().get_Tmax());
+
     try
     {
+        agents.operate(connectionQueue);
         inConnection.listen_on(Config::singleton().get_bport());
     }
     catch (const BBServException& error)

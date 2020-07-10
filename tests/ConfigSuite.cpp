@@ -1,4 +1,6 @@
-#include "config.h"
+// Filename: ConfigSuite.cpp
+
+#include "Config.h"
 
 // Fake implementations
 

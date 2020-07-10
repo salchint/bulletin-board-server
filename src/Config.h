@@ -1,14 +1,23 @@
-// config.h
+// Config.h
 
 #pragma once
 
 #include <iostream>
 #include <string>
-#include <string_view>
 #include <sstream>
+#include <unistd.h>
+#include <sys/types.h>
+#include <sys/syscall.h>
 #include "BBServException.h"
 
-class Config {
+#ifdef SYS_gettid
+pid_t gettid();
+#else
+#error "SYS_gettid unavailable on this system"
+#endif
+
+class Config
+{
     protected:
         std::string bbfile;
         size_t Tmax = 20;
@@ -18,7 +27,8 @@ class Config {
         bool isDebug = false;
 
     public:
-        static Config& singleton() {
+        static Config& singleton()
+        {
             static Config object;
             return object;
         }
@@ -84,7 +94,7 @@ void error_return(OriginT origin, ArgsT... args)
     if (Config::singleton().is_debug())
     {
         std::stringstream sout;
-        sout << "ERROR - " << typeid(origin).name() << ": ";
+        sout << "ERROR - [" << gettid() << "] " << typeid(origin).name() << ": ";
         (sout << ... << args) << ' ' << std::endl;
         throw BBServException(sout.str());
     }
@@ -99,7 +109,7 @@ void debug_print(OriginT origin, ArgsT... args)
     if (Config::singleton().is_debug())
     {
         std::stringstream sout;
-        std::cout << "DBG   - " << typeid(origin).name() << ": ";
+        std::cout << "DBG   - [" << gettid() << "] " << typeid(origin).name() << ": ";
         (std::cout << ... << args) << ' ' << std::endl;
     }
 }

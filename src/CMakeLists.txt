@@ -24,6 +24,8 @@ add_executable(
     ${headers}
 )
 
+target_link_libraries(bbserv m pthread)
+
 install(
     TARGETS bbserv
     DESTINATION lib
