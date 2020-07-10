@@ -14,8 +14,10 @@ list(APPEND CMAKE_MODULE_PATH "${CMAKE_SOURCE_DIR}/cmake")
 
 project(Bulletin_Board_Server CXX)
 
-set(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} -Wall -pedantic -std=c++17")
-set(CMAKE_C_FLAGS "${CMAKE_C_FLAGS} -Wall -pedantic -std=gnu99")
+set(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} -Wall -pedantic")
+set(CMAKE_C_FLAGS "${CMAKE_C_FLAGS} -Wall -pedantic")
+set(CMAKE_CXX_STANDARD 17)
+set(CMAKE_C_STANDARD 99)
 
 set(CMAKE_RUNTIME_OUTPUT_DIRECTORY "${CMAKE_BINARY_DIR}")
 
