@@ -6,6 +6,8 @@
 #include <string>
 #include <cstring>
 #include <cstdio>
+#include <sstream>
+#include "SessionResources.h"
 
 static void print_commands(FILE* stream)
 {
@@ -13,11 +15,11 @@ static void print_commands(FILE* stream)
     fflush(stream);
 }
 
-static void open_socket_stream(int socketNumber, FILE** stream)
+static void open_socket_stream(int socketNumber, FILE*& stream)
 {
-    *stream = fdopen(socketNumber, "rb+");
+    stream = fdopen(socketNumber, "rb+");
 
-    if (!*stream) {
+    if (!stream) {
         error_return(stream, "Failed to open stream for socket ", socketNumber);
     }
 }
@@ -25,32 +27,45 @@ static void open_socket_stream(int socketNumber, FILE** stream)
 static void* thread_main(void* p)
 {
     auto pool { reinterpret_cast<ThreadPool*>(p) };
-    auto clientSocket { 0 };
-    FILE* stream { nullptr };
+    std::string command;
     std::string buffer;
     buffer.resize(1024);
+    std::stringstream io;
 
     for (;;)
     {
-        clientSocket = pool->get_connection();
+        SessionResources resources;
+        command.clear();
+        buffer.clear();
+        io.clear();
+        resources.get_clientSocket() = pool->get_connection();
 
         try
         {
-            open_socket_stream(clientSocket, &stream);
+            open_socket_stream(resources.get_clientSocket(), resources.get_stream());
         }
         catch (const BBServException& error)
         {
-            std::cout << "Stop processing client request on socket " << clientSocket
+            std::cout << "Stop processing client request on socket " << resources.get_clientSocket()
                << ": " << error.what() << std::endl;
             return nullptr;
         }
 
-        print_commands(stream);
-        while (fgets(buffer.data(), buffer.size(), stream))
+        print_commands(resources.get_stream());
+
+        while (fgets(buffer.data(), buffer.size(), resources.get_stream()))
         {
-            debug_print(pool, "Received on ", clientSocket, ": ", buffer);
+            debug_print(pool, "Received on ", resources.get_clientSocket(), ": ", buffer);
+
+            io.str(buffer);
+            io >> command;
+
+            if (command == "USER")
+            {
+                
+            }
         }
-        debug_print(pool, "Client connection closed on ", clientSocket);
+        debug_print(pool, "Client connection closed on ", resources.get_clientSocket());
 
         //if (0 == strncmp("log", planesLog[loggedPlanes], 3)) {
             //control_sort_plane_log(planesLog, loggedPlanes);
