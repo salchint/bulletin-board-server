@@ -1,6 +1,7 @@
 //Filename:  CmdUser.cpp
 
 #include "CmdUser.h"
+#include <cstdio>
 
 void CmdUser::execute()
 {
@@ -10,9 +11,16 @@ void CmdUser::execute()
         return;
     }
 
-    this->io >> this->user;
+    debug_print(this, "Processing USER command\n");
+
+    char text[1024];
+    if (1 != sscanf(line, "USER %s", text))
+    {
+        error_return(this, "Malformed USER command");
+    }
+    this->user = text;
     debug_print(this, "Say HELLO to ", this->user);
-    this->io.seekp(0);
-    this->io << "1.0 HELLO " << this->user << " I'm ready" << std::endl;
-    this->io.flush();
+
+    fprintf(this->stream, "1.0 HELLO %s I'm ready\n", this->user.data());
+    fflush(this->stream);
 }

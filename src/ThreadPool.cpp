@@ -6,6 +6,7 @@
 #include <string>
 #include <cstring>
 #include <cstdio>
+#include <cstdlib>
 #include <sstream>
 #include <vector>
 #include <array>
@@ -43,11 +44,11 @@ static void open_socket_stream(int socketNumber, FILE*& stream)
 /**
  *Build a command object for the given command ID.
  */
-static std::optional<ThreadPool::Commands_t> build_command(const std::string& commandId, std::iostream& io, SessionResources& resources)
+static std::optional<ThreadPool::Commands_t> build_command(const std::string& commandId, const char* line, SessionResources& resources)
 {
     if (commandId == "USER")
     {
-        return CmdUser(commandId, io, resources.get_user());
+        return CmdUser(commandId, resources.get_stream(), line, resources.get_user());
     }
     return {};
 }
@@ -58,15 +59,13 @@ static std::optional<ThreadPool::Commands_t> build_command(const std::string& co
 static void* thread_main(void* p)
 {
     auto pool { reinterpret_cast<ThreadPool*>(p) };
-    std::string commandId;
+    std::array<char, 16> commandId;
     std::array<char, 1024> line;
-    std::stringstream io;
 
     for (;;)
     {
         SessionResources resources;
-        commandId.clear();
-        io.clear();
+        commandId.fill('\0');
         line.fill('\0');
         resources.get_clientSocket() = pool->get_connection();
 
@@ -103,10 +102,9 @@ static void* thread_main(void* p)
         {
             debug_print(pool, "Received on ", resources.get_clientSocket(), ": ", line.data());
 
-            io.str(line.data());
-            io >> commandId;
+            sscanf(line.data(), "%s ", commandId.data());
 
-            if (commandId == "QUIT")
+            if (0 == std::strncmp("QUIT", commandId.data(), 4))
             {
                 break;
             }
@@ -126,21 +124,19 @@ static void* thread_main(void* p)
 
             try
             {
-                ThreadPool::Commands_t command { build_command(commandId, io, resources).value() };
+                ThreadPool::Commands_t command { build_command(commandId.data(), line.data(), resources).value() };
 
                 std::visit([](auto&& command) { command.execute(); }, command);
-
-                io.seekg(0);
-                io.getline(line.data(), line.size());
-                line[std::strlen(line.data()) + 1] = '\n';
-                fputs(line.data(), resources.get_stream());
-                fputc('\n', resources.get_stream());
-                fflush(resources.get_stream());
             }
             catch (const std::bad_optional_access&)
             {
                 std::cout << "ERROR - Failed to build command object from " << line.data() << std::endl;
-                return nullptr;
+                break;
+            }
+            catch (const BBServException& error)
+            {
+                std::cout << error.what() << std::endl;
+                break;
             }
 
         }

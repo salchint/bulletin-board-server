@@ -107,10 +107,10 @@ TEST_F(IntegrationSuite, testUser)
     fgets(buffer.data(), buffer.size(), this->stream);
     EXPECT_STREQ(buffer.data(), "0.0 bbserv supported commands: [USER <name>|READ <msg-number>|WRITE <msg>|REPLACE <msg-number>/<msg>|QUIT <text>]\n");
     // Send my name
-    fputs("USER Test-bbserv", stream);
-    fflush(stream);
+    fputs("USER Test-bbserv\n", this->stream);
+    fflush(this->stream);
     // Receive acknowledge
     fgets(buffer.data(), buffer.size(), this->stream);
-    EXPECT_STREQ(buffer.data(), "1.0 HELLO Test-bbserv I'm ready");
+    EXPECT_STREQ(buffer.data(), "1.0 HELLO Test-bbserv I'm ready\n");
 }
 
