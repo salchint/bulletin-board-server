@@ -7,14 +7,30 @@
 #include <cstring>
 #include <cstdio>
 #include <sstream>
+#include <vector>
+#include <array>
+#include <optional>
 #include "SessionResources.h"
 
+/**
+ *Provide operator() for all availble commands.
+ */
+template<class... Ts> struct Overload : Ts... { using Ts::operator()...; };
+template<class... Ts> Overload(Ts...) -> Overload<Ts...>;
+
+
+/**
+ *Print the supported commands as a wellcome message.
+ */
 static void print_commands(FILE* stream)
 {
     fputs("0.0 bbserv supported commands: [USER <name>|READ <msg-number>|WRITE <msg>|REPLACE <msg-number>/<msg>|QUIT <text>]\n", stream);
     fflush(stream);
 }
 
+/**
+ *Open a stream from the given socket.
+ */
 static void open_socket_stream(int socketNumber, FILE*& stream)
 {
     stream = fdopen(socketNumber, "rb+");
@@ -24,21 +40,51 @@ static void open_socket_stream(int socketNumber, FILE*& stream)
     }
 }
 
+/**
+ *Build a command object for the given command ID.
+ */
+static std::optional<ThreadPool::Commands_t> build_command(const std::string& commandId, std::iostream& io, SessionResources& resources)
+{
+    if (commandId == "USER")
+    {
+        return CmdUser(commandId, io, resources.get_user());
+    }
+    return {};
+}
+
+/**
+ *The thread's entry point.
+ */
 static void* thread_main(void* p)
 {
     auto pool { reinterpret_cast<ThreadPool*>(p) };
-    std::string command;
-    std::string buffer;
-    buffer.resize(1024);
+    std::string commandId;
+    std::array<char, 1024> line;
     std::stringstream io;
 
     for (;;)
     {
         SessionResources resources;
-        command.clear();
-        buffer.clear();
+        commandId.clear();
         io.clear();
+        line.fill('\0');
         resources.get_clientSocket() = pool->get_connection();
+
+        //{
+            //open_socket_stream(resources.get_clientSocket(), resources.get_stream());
+            //fputs("Hi there!\n", resources.get_stream());
+            //print_commands(resources.get_stream());
+
+            //while (fgets(line.data(), 100, resources.get_stream()))
+            //{
+                //io.str(line.data());
+                ////io.str(line);
+                //io >> commandId;
+                //std::cout << commandId << std::endl;
+                //fputs("once more ...\n", resources.get_stream());
+            //}
+            //fclose(resources.get_stream());
+        //}
 
         try
         {
@@ -53,31 +99,52 @@ static void* thread_main(void* p)
 
         print_commands(resources.get_stream());
 
-        while (fgets(buffer.data(), buffer.size(), resources.get_stream()))
+        while (fgets(line.data(), line.size(), resources.get_stream()))
         {
-            debug_print(pool, "Received on ", resources.get_clientSocket(), ": ", buffer);
+            debug_print(pool, "Received on ", resources.get_clientSocket(), ": ", line.data());
 
-            io.str(buffer);
-            io >> command;
+            io.str(line.data());
+            io >> commandId;
 
-            if (command == "USER")
+            if (commandId == "QUIT")
             {
-                
+                break;
             }
+
+            //auto userCmd { CmdUser(commandId, io, resources.get_user()) };
+
+            //std::vector<ThreadPool::Commands_t> commands =
+                //{ userCmd };
+
+            //for (auto& command : commands)
+            //{
+                //std::visit(Overload {
+                        ////[](CmdUser& cmd) { cmd.execute(); }
+                        //[](CmdUser&) { std::cout << "It's a USER command" << std::endl;}
+                        //}, command);
+            //}
+
+            try
+            {
+                ThreadPool::Commands_t command { build_command(commandId, io, resources).value() };
+
+                std::visit([](auto&& command) { command.execute(); }, command);
+
+                io.seekg(0);
+                io.getline(line.data(), line.size());
+                line[std::strlen(line.data()) + 1] = '\n';
+                fputs(line.data(), resources.get_stream());
+                fputc('\n', resources.get_stream());
+                fflush(resources.get_stream());
+            }
+            catch (const std::bad_optional_access&)
+            {
+                std::cout << "ERROR - Failed to build command object from " << line.data() << std::endl;
+                return nullptr;
+            }
+
         }
         debug_print(pool, "Client connection closed on ", resources.get_clientSocket());
-
-        //if (0 == strncmp("log", planesLog[loggedPlanes], 3)) {
-            //control_sort_plane_log(planesLog, loggedPlanes);
-
-            //for (i = 0; i < loggedPlanes; i++) {
-                //fprintf(streamToPlane, "%s", planesLog[i]);
-            //}
-            //fputs(".\n", streamToPlane);
-        //} else {
-            //loggedPlanes += 1;
-            //fprintf(streamToPlane, "%s\n", info);
-        //}
     }
 
     return nullptr;
@@ -91,7 +158,7 @@ static void create_pool(size_t size, std::vector<pthread_t>& container, ThreadPo
 
     for (auto i {0u}; i < size; ++i)
     {
-        bool success { 0 == pthread_create(&container[i], &clientThreadOptions, 
+        bool success { 0 == pthread_create(&container[i], &clientThreadOptions,
                 thread_main, static_cast<void*>(pool))};
 
         if (!success)

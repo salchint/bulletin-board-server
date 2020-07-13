@@ -5,14 +5,19 @@
 #include <pthread.h>
 #include <vector>
 #include <memory>
+#include <variant>
 #include "ConnectionQueue.h"
 #include "BBServException.h"
+#include "CmdUser.h"
 
 /**
  *A container of agents operating on client requests.
  */
 class ThreadPool
 {
+    public:
+        using Commands_t = std::variant<CmdUser>;
+
     protected:
         size_t size {1};
         std::vector<pthread_t> pool;

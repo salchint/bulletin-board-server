@@ -4,6 +4,7 @@
 #include <unistd.h>
 #include <signal.h>
 #include <string>
+#include <array>
 
 
 // Fake implementations
@@ -30,8 +31,11 @@ public:
         childId = fork();
         if (!childId)
         {
-            //EXPECT_NE(-1, execlp(exe, exe, "-d", nullptr)) << "Failed to launch " << exe;
+            /**/
+            EXPECT_NE(-1, execlp(exe, exe, "-d", nullptr)) << "Failed to launch " << exe;
+            /*/
             EXPECT_NE(-1, execlp(exe, exe, nullptr)) << "Failed to launch " << exe;
+            /*/
         }
         else
         {
@@ -68,6 +72,8 @@ public:
     {
         if (stream)
         {
+            fputs("QUIT\n", this->stream);
+            fputc('\n', this->stream);
             fclose(this->stream);
             this->stream = nullptr;
             this->clientSocket = 0;
@@ -88,9 +94,23 @@ TEST_F(IntegrationSuite, test00)
 
 TEST_F(IntegrationSuite, testGreetings)
 {
-    std::string buffer;
-    buffer.resize(1024);
-    fgets(buffer.data(),buffer.size(), this->stream);
+    std::array<char, 1024> buffer;
+    // Receive greetings
+    fgets(buffer.data(), buffer.size(), this->stream);
     EXPECT_STREQ(buffer.data(), "0.0 bbserv supported commands: [USER <name>|READ <msg-number>|WRITE <msg>|REPLACE <msg-number>/<msg>|QUIT <text>]\n");
+}
+
+TEST_F(IntegrationSuite, testUser)
+{
+    std::array<char, 1024> buffer;
+    // Receive greetings
+    fgets(buffer.data(), buffer.size(), this->stream);
+    EXPECT_STREQ(buffer.data(), "0.0 bbserv supported commands: [USER <name>|READ <msg-number>|WRITE <msg>|REPLACE <msg-number>/<msg>|QUIT <text>]\n");
+    // Send my name
+    fputs("USER Test-bbserv", stream);
+    fflush(stream);
+    // Receive acknowledge
+    fgets(buffer.data(), buffer.size(), this->stream);
+    EXPECT_STREQ(buffer.data(), "1.0 HELLO Test-bbserv I'm ready");
 }
 
