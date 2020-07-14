@@ -38,6 +38,10 @@ size_t CmdWrite::update_message_number()
 
 void CmdWrite::execute()
 {
+    auto &in =  std::ios_base::in;
+    auto &out =  std::ios_base::out;
+    auto &trunc =  std::ios_base::trunc;
+
     if (this->commandId != COMMAND_ID)
     {
         debug_print(this, "Command ", this->commandId, " is not for me");
@@ -50,9 +54,27 @@ void CmdWrite::execute()
 
     try
     {
-        auto number { update_message_number() };
+        auto id { update_message_number() };
+        std::fstream fout (Config::singleton().get_bbfile());
 
-        fprintf(this->stream, "3.0 WROTE %lu\n", number);
+        // Create the file if needed
+        if (fout.fail())
+        {
+            fout.open(Config::singleton().get_bbfile(), in|out|trunc);
+            fout.flush();
+        }
+
+        // Throw if this fails too
+        if (fout.fail())
+        {
+            error_return(this, "Failed to open/create file ", Config::singleton().get_bbfile());
+        }
+
+        fout.seekp(0, std::ios_base::end);
+        debug_print(this, "file pos ", fout.tellp());
+        fout << id << "/" << this->user << "/" << message;
+
+        fprintf(this->stream, "3.0 WROTE %lu\n", id);
         fflush(this->stream);
     }
     catch (const BBServException& error)

@@ -6,6 +6,7 @@
 #include <string>
 #include <array>
 #include <cstdio>
+#include <fstream>
 
 
 // Fake implementations
@@ -20,6 +21,10 @@
 // Fixture
 class IntegrationSuite : public ::testing::Test
 {
+protected:
+    constexpr static const char* const DEFAULT_BBFILE { "bbfile.txt" };
+    constexpr static const char* const DEFAULT_NOFILE { "bbfile.txt.no" };
+
 public:
     int childId {0};
     int clientSocket {0};
@@ -68,8 +73,9 @@ public:
         //std::cout << "TEST - Open stream on " << this->clientSocket << std::endl;
         EXPECT_NE(stream, nullptr);
 
-        // Delete the number file
-        std::remove("bbfile.txt.no");
+        // Delete the number file and bbfile
+        std::remove(DEFAULT_BBFILE);
+        std::remove(DEFAULT_NOFILE);
     }
 
     void TearDown() override
@@ -129,5 +135,52 @@ TEST_F(IntegrationSuite, testWrite)
     // Receive acknowledge
     fgets(buffer.data(), buffer.size(), this->stream);
     EXPECT_STREQ(buffer.data(), "3.0 WROTE 0\n");
+}
+
+TEST_F(IntegrationSuite, testWriteFile)
+{
+    std::array<char, 1024> buffer;
+    // Receive greetings
+    fgets(buffer.data(), buffer.size(), this->stream);
+    buffer.fill('\0');
+    // Send WRITE request
+    fputs("WRITE The first line\n", this->stream);
+    fflush(this->stream);
+    // Receive acknowledge
+    fgets(buffer.data(), buffer.size(), this->stream);
+    buffer.fill('\0');
+    // Verify the file content
+    std::ifstream input(DEFAULT_BBFILE);
+    EXPECT_TRUE(input.good()) << "Failed to open " << DEFAULT_BBFILE;
+    input.get(buffer.data(), buffer.size(), EOF);
+    EXPECT_STREQ(buffer.data(), "0/nobody/The first line\n") << DEFAULT_BBFILE << " does not contain the desired line";
+}
+
+TEST_F(IntegrationSuite, testWriteFile_multiple)
+{
+    std::array<char, 1024> buffer;
+    // Receive greetings
+    fgets(buffer.data(), buffer.size(), this->stream);
+    // Send WRITE request
+    fputs("WRITE A\n", this->stream);
+    // Receive acknowledge
+    fgets(buffer.data(), buffer.size(), this->stream);
+    // Send WRITE request
+    fputs("WRITE B\n", this->stream);
+    // Receive acknowledge
+    fgets(buffer.data(), buffer.size(), this->stream);
+    // Change user name
+    fputs("USER Mike\n", this->stream);
+    // Receive acknowledge
+    fgets(buffer.data(), buffer.size(), this->stream);
+    // Send WRITE request
+    fputs("WRITE C\n", this->stream);
+    // Receive acknowledge
+    fgets(buffer.data(), buffer.size(), this->stream);
+    // Verify the file content
+    std::ifstream input(DEFAULT_BBFILE);
+    EXPECT_TRUE(input.good()) << "Failed to open " << DEFAULT_BBFILE;
+    input.get(buffer.data(), buffer.size(), EOF);
+    EXPECT_STREQ(buffer.data(), "0/nobody/A\n1/nobody/B\n2/Mike/C\n") << DEFAULT_BBFILE << " does not contain the desired lines";
 }
 

@@ -16,15 +16,17 @@ class CmdWrite
         std::string commandId;
         FILE* stream {nullptr};
         const char* line {nullptr};
+        std::string user;
 
     public:
         /**
          *Custom constructor accepting the command line received on the socket.
          */
-        CmdWrite(const std::string& commandId, FILE* stream, const char* line)
+        CmdWrite(const std::string& commandId, FILE* stream, const char* line, std::string& user)
             : commandId(commandId)
             , stream(stream)
             , line(line)
+            , user(user)
         { }
 
     public:
