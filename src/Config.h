@@ -19,12 +19,12 @@ pid_t gettid();
 class Config
 {
     protected:
-        std::string bbfile;
-        size_t Tmax = 20;
-        int bport = 9000;
-        int sport = 10000;
-        bool isDaemon = true;
-        bool isDebug = false;
+        std::string bbfile { "bbfile.txt" };
+        size_t Tmax { 20 };
+        int bport { 9000 };
+        int sport { 10000 };
+        bool isDaemon { true };
+        bool isDebug { false };
 
     public:
         static Config& singleton()
@@ -112,5 +112,37 @@ void debug_print(OriginT origin, ArgsT... args)
         std::cout << "DBG   - [" << gettid() << "] " << typeid(origin).name() << ": ";
         (std::cout << ... << args) << ' ' << std::endl;
     }
+}
+
+/**
+ *Helper function that converts ios_base state bits into names.
+ */
+inline std::string name_statebits(long bit)
+{
+    auto &goodbit =  std::ios_base::goodbit;
+    auto &badbit =  std::ios_base::badbit;
+    auto &eofbit =  std::ios_base::eofbit;
+    auto &failbit =  std::ios_base::failbit;
+
+    std::string result;
+
+    if (goodbit == bit)
+    {
+        result = "good";
+    }
+    if (badbit & bit)
+    {
+        result += "|bad";
+    }
+    if (eofbit & bit)
+    {
+        result += "|eof";
+    }
+    if (failbit & bit)
+    {
+        result += "|fail";
+    }
+
+    return result;
 }
 

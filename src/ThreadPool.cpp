@@ -50,6 +50,10 @@ static std::optional<ThreadPool::Commands_t> build_command(const std::string& co
     {
         return CmdUser(commandId, resources.get_stream(), line, resources.get_user());
     }
+    else if (commandId == "WRITE")
+    {
+        return CmdWrite(commandId, resources.get_stream(), line);
+    }
     return {};
 }
 

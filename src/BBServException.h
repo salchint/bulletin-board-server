@@ -2,15 +2,16 @@
 
 #pragma once
 
+#include <iostream>
 #include <exception>
-#include <string_view>
+#include <string>
 
 /**
  *Exception type accepting an error text upon creation.
  */
 class BBServException : public std::exception
 {
-    std::string_view errorText;
+    std::string errorText;
 
     public:
         BBServException(const std::string_view& text)

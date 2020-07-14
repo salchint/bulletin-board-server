@@ -30,7 +30,7 @@ public:
 // Tests
 TEST_F(ConfigSuite, testConstruction) {
     auto& obj = Config::singleton();
-    EXPECT_EQ("", obj.get_bbfile());
+    EXPECT_EQ("bbfile.txt", obj.get_bbfile());
     EXPECT_EQ(20, obj.get_Tmax());
     EXPECT_EQ(9000, obj.get_bport());
     EXPECT_EQ(10000, obj.get_sport());

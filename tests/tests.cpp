@@ -5,6 +5,7 @@
 #include <signal.h>
 #include <string>
 #include <array>
+#include <cstdio>
 
 
 // Fake implementations
@@ -66,6 +67,9 @@ public:
         stream = fdopen(this->clientSocket, "rb+");
         //std::cout << "TEST - Open stream on " << this->clientSocket << std::endl;
         EXPECT_NE(stream, nullptr);
+
+        // Delete the number file
+        std::remove("bbfile.txt.no");
     }
 
     void TearDown() override
@@ -105,12 +109,25 @@ TEST_F(IntegrationSuite, testUser)
     std::array<char, 1024> buffer;
     // Receive greetings
     fgets(buffer.data(), buffer.size(), this->stream);
-    EXPECT_STREQ(buffer.data(), "0.0 bbserv supported commands: [USER <name>|READ <msg-number>|WRITE <msg>|REPLACE <msg-number>/<msg>|QUIT <text>]\n");
     // Send my name
     fputs("USER Test-bbserv\n", this->stream);
     fflush(this->stream);
     // Receive acknowledge
     fgets(buffer.data(), buffer.size(), this->stream);
     EXPECT_STREQ(buffer.data(), "1.0 HELLO Test-bbserv I'm ready\n");
+}
+
+TEST_F(IntegrationSuite, testWrite)
+{
+    std::array<char, 1024> buffer;
+    // Receive greetings
+    fgets(buffer.data(), buffer.size(), this->stream);
+    buffer.fill('\0');
+    // Send WRITE request
+    fputs("WRITE The first line\n", this->stream);
+    fflush(this->stream);
+    // Receive acknowledge
+    fgets(buffer.data(), buffer.size(), this->stream);
+    EXPECT_STREQ(buffer.data(), "3.0 WROTE 0\n");
 }
 
