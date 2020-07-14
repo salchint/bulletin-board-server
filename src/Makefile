@@ -7,10 +7,10 @@ LDIR =../lib
 
 LIBS=-lm -pthread
 
-_DEPS = AutoLock.h         CmdUser.h  ConnectionQueue.h  BBServException.h  Config.h   InConnection.h     ThreadPool.h
+_DEPS = AutoLock.h BBServException.h CmdUser.h CmdWrite.h Config.h ConnectionQueue.h InConnection.h SessionResources.h ThreadPool.h
 DEPS = $(patsubst %,$(IDIR)/%,$(_DEPS))
 
-_OBJ = Config.o  ConnectionQueue.o  InConnection.o  main.o  ThreadPool.o
+_OBJ = CmdUser.o CmdWrite.o Config.o ConnectionQueue.o InConnection.o main.o ThreadPool.o
 OBJ = $(patsubst %,$(ODIR)/%,$(_OBJ))
 
 
