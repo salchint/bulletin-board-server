@@ -10,6 +10,7 @@
 #include "BBServException.h"
 #include "CmdUser.h"
 #include "CmdWrite.h"
+#include "CmdRead.h"
 
 /**
  *A container of agents operating on client requests.
@@ -17,7 +18,7 @@
 class ThreadPool
 {
     public:
-        using Commands_t = std::variant<CmdUser, CmdWrite>;
+        using Commands_t = std::variant<CmdUser, CmdWrite, CmdRead>;
 
     protected:
         size_t size {1};

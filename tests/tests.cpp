@@ -4,6 +4,7 @@
 #include <unistd.h>
 #include <signal.h>
 #include <string>
+#include <cstring>
 #include <array>
 #include <cstdio>
 #include <fstream>
@@ -182,5 +183,73 @@ TEST_F(IntegrationSuite, testWriteFile_multiple)
     EXPECT_TRUE(input.good()) << "Failed to open " << DEFAULT_BBFILE;
     input.get(buffer.data(), buffer.size(), EOF);
     EXPECT_STREQ(buffer.data(), "0/nobody/A\n1/nobody/B\n2/Mike/C\n") << DEFAULT_BBFILE << " does not contain the desired lines";
+}
+
+TEST_F(IntegrationSuite, testRead)
+{
+    std::array<char, 1024> buffer;
+    // Receive greetings
+    fgets(buffer.data(), buffer.size(), this->stream);
+    // Send WRITE request
+    fputs("WRITE The first line\n", this->stream);
+    // Receive acknowledge
+    fgets(buffer.data(), buffer.size(), this->stream);
+    // Read the message again
+    fputs("READ 0\n", this->stream);
+    // Receive message text
+    fgets(buffer.data(), buffer.size(), this->stream);
+    // Verify the read message
+    EXPECT_STREQ(buffer.data(), "2.0 MESSAGE 0 nobody/The first line\n") << "Failed to read the just written message";
+}
+
+TEST_F(IntegrationSuite, testRead_wrongId)
+{
+    std::array<char, 1024> buffer;
+    // Receive greetings
+    fgets(buffer.data(), buffer.size(), this->stream);
+    // Send WRITE request
+    fputs("WRITE The first line\n", this->stream);
+    // Receive acknowledge
+    fgets(buffer.data(), buffer.size(), this->stream);
+    // Read the message again
+    fputs("READ 1\n", this->stream);
+    // Receive message text
+    fgets(buffer.data(), buffer.size(), this->stream);
+    // Verify the read message
+    EXPECT_STREQ(buffer.data(), "2.1 UNKNOWN 1 Record not found\n") << "The message ID 1 should be unknown";
+}
+
+TEST_F(IntegrationSuite, testRead_noBBFile)
+{
+    std::array<char, 1024> buffer;
+    // Receive greetings
+    fgets(buffer.data(), buffer.size(), this->stream);
+    // Read the message again
+    fputs("READ 0\n", this->stream);
+    // Receive message text
+    fgets(buffer.data(), buffer.size(), this->stream);
+    // Verify the read message
+    EXPECT_NE(nullptr, std::strstr(buffer.data(), "2.2 ERROR READ")) << "The bbfile should be not written yet";
+    EXPECT_NE(nullptr, std::strstr(buffer.data(), "bbfile is not available")) << "The bbfile should be not written yet";
+}
+
+TEST_F(IntegrationSuite, testRead_malformed)
+{
+    std::array<char, 1024> buffer;
+    // Receive greetings
+    fgets(buffer.data(), buffer.size(), this->stream);
+    // Send WRITE request
+    fputs("WRITE The first line\n", this->stream);
+    // Receive acknowledge
+    fgets(buffer.data(), buffer.size(), this->stream);
+    // Issue a malformed READ request
+    fputs("READ a\n", this->stream);
+    // Receive an error
+    fgets(buffer.data(), buffer.size(), this->stream);
+    // Verify the read message
+    EXPECT_NE(nullptr, std::strstr(buffer.data(), "2.2 ERROR READ"))
+        << "The READ request shall contain a message ID: " << buffer.data();
+    EXPECT_NE(nullptr, std::strstr(buffer.data(), "Request malformed"))
+        << "The READ request shall contain a message ID: " << buffer.data();
 }
 
