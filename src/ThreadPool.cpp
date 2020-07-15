@@ -58,6 +58,14 @@ static std::optional<ThreadPool::Commands_t> build_command(const std::string& co
     {
         return CmdRead(commandId, resources.get_stream(), line, resources.get_user());
     }
+    else if (commandId == "REPLACE")
+    {
+        return CmdReplace(commandId, resources.get_stream(), line, resources.get_user());
+    }
+    else if (commandId == "QUIT")
+    {
+        return CmdQuit(commandId, resources.get_stream(), line, resources.get_user());
+    }
     return {};
 }
 
@@ -112,29 +120,17 @@ static void* thread_main(void* p)
 
             sscanf(line.data(), "%s ", commandId.data());
 
-            if (0 == std::strncmp("QUIT", commandId.data(), 4))
-            {
-                break;
-            }
-
-            //auto userCmd { CmdUser(commandId, io, resources.get_user()) };
-
-            //std::vector<ThreadPool::Commands_t> commands =
-                //{ userCmd };
-
-            //for (auto& command : commands)
-            //{
-                //std::visit(Overload {
-                        ////[](CmdUser& cmd) { cmd.execute(); }
-                        //[](CmdUser&) { std::cout << "It's a USER command" << std::endl;}
-                        //}, command);
-            //}
-
             try
             {
                 ThreadPool::Commands_t command { build_command(commandId.data(), line.data(), resources).value() };
 
                 std::visit([](auto&& command) { command.execute(); }, command);
+
+                if (0 == std::strncmp("QUIT", commandId.data(), 4))
+                {
+                    break;
+                }
+
             }
             catch (const std::bad_optional_access&)
             {

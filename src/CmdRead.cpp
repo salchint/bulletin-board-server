@@ -61,9 +61,11 @@ void CmdRead::execute()
 
             fprintf(this->stream, "2.0 MESSAGE %s\n", record->data());
         }
-
-        fprintf(this->stream, "2.1 UNKNOWN %s Record not found\n", id.data());
-        fflush(this->stream);
+        else
+        {
+            fprintf(this->stream, "2.1 UNKNOWN %s Record not found\n", id.data());
+            fflush(this->stream);
+        }
     }
     catch (const BBServException& error)
     {

@@ -11,6 +11,8 @@
 #include "CmdUser.h"
 #include "CmdWrite.h"
 #include "CmdRead.h"
+#include "CmdReplace.h"
+#include "CmdQuit.h"
 
 /**
  *A container of agents operating on client requests.
@@ -18,7 +20,7 @@
 class ThreadPool
 {
     public:
-        using Commands_t = std::variant<CmdUser, CmdWrite, CmdRead>;
+        using Commands_t = std::variant<CmdUser, CmdWrite, CmdRead, CmdReplace, CmdQuit>;
 
     protected:
         size_t size {1};
