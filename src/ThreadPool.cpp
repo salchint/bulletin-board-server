@@ -42,7 +42,19 @@ static void open_socket_stream(int socketNumber, FILE*& stream)
 }
 
 /**
- *Build a command object for the given command ID.
+ * Build a command object for the given command ID.
+ *
+ * This function acts as a builder for all the supported command objects. It
+ * returns a specific command object or std::nullopt if the requested command
+ * is not supported.
+ *
+ * \param commandId Supported command identifiers include USER, WRITE, READ,
+ *                  REPLACE and QUIT.
+ * \param line  The received request message from the client. It is ought to
+ *              start with the command identifier and may convey additional
+ *              arguments.
+ * \param resources Resources bound to this client connection including the
+ *                  clients name as issued by the USER command.
  */
 static std::optional<ThreadPool::Commands_t> build_command(const std::string& commandId, const char* line, SessionResources& resources)
 {
@@ -85,22 +97,6 @@ static void* thread_main(void* p)
         line.fill('\0');
         resources.get_clientSocket() = pool->get_connection();
 
-        //{
-            //open_socket_stream(resources.get_clientSocket(), resources.get_stream());
-            //fputs("Hi there!\n", resources.get_stream());
-            //print_commands(resources.get_stream());
-
-            //while (fgets(line.data(), 100, resources.get_stream()))
-            //{
-                //io.str(line.data());
-                ////io.str(line);
-                //io >> commandId;
-                //std::cout << commandId << std::endl;
-                //fputs("once more ...\n", resources.get_stream());
-            //}
-            //fclose(resources.get_stream());
-        //}
-
         try
         {
             open_socket_stream(resources.get_clientSocket(), resources.get_stream());
@@ -134,16 +130,21 @@ static void* thread_main(void* p)
             }
             catch (const std::bad_optional_access&)
             {
-                std::cout << "ERROR - Failed to build command object from " << line.data() << std::endl;
-                break;
+                std::cout << "ERROR - Failed to build command object from unknown '" << line.data() <<"'" << std::endl;
+                continue;
             }
             catch (const BBServException& error)
             {
                 std::cout << error.what() << std::endl;
+
+                // Shutdown in a civilized manner
+                auto command { build_command("QUIT", "QUIT", resources).value() };
+                std::visit([](auto&& command) { command.execute(); }, command);
                 break;
             }
 
         }
+
         debug_print(pool, "Client connection closed on ", resources.get_clientSocket());
     }
 
