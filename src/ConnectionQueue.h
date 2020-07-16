@@ -19,12 +19,16 @@ class ConnectionQueue
 
     public:
         /**
-         *Add the socket of an incoming connection to this queue.
+         * Add the socket of an incoming connection to this queue.
+         *
+         * This funciton is thread-safe and may be used from all the agnets.
          */
         void add(int clientSocket);
 
         /**
-         *Get the socket of an incoming connection in a blocking manner.
+         * Get the socket of an incoming connection in a blocking manner.
+         *
+         * This funciton is thread-safe and may be used from all the agnets.
          */
         int get();
 };

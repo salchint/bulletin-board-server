@@ -24,6 +24,7 @@ class InConnection
     public:
         /**
          * Creates and listens on a socket bound to the given port.
+         *
          * Upon error might throw BBServException.
          */
         void listen_on(/*const std::string_view& ipaddress,*/ in_port_t port);
