@@ -4,6 +4,8 @@
 #include <sys/socket.h>
 #include <netinet/in.h>
 #include <arpa/inet.h>
+#include <fcntl.h>
+#include <poll.h>
 #include "Config.h"
 
 InConnection::InConnection(std::shared_ptr<ConnectionQueue>& qu)
@@ -46,6 +48,11 @@ void InConnection::open_incoming_conn(/*const std::string_view& ipaddress,*/ in_
     setsockopt(this->acceptSocket, SOL_SOCKET, SO_REUSEADDR, (void*)&enable,
             sizeof(enable));
 
+    if (this->connectionQueue->is_nonblocking())
+    {
+        fcntl(this->acceptSocket, F_SETFL, O_NONBLOCK);
+    }
+
     //if (!inet_aton(ipaddress.data(), &acceptAddress.sin_addr))
     //{
         //error_return(this, "Invalid IP-address");
@@ -64,41 +71,57 @@ void InConnection::open_incoming_conn(/*const std::string_view& ipaddress,*/ in_
 }
 
 /**
- *Listen at the socket, accept incoming connections and delegate them to a worker thread.
+ * Listen at the socket, accept incoming connections and delegate them to a worker thread.
+ *
+ * In case this instance is operating on a socket in non-blocking mode, it
+ * might throw BBServTimeout.
  */
 void InConnection::listen_for_clients()
 {
-    int clientSocket = 0;
-    //pthread_t clientThread;
-    //pthread_attr_t clientThreadOptions;
+    auto clientSocket {0};
+    auto timeoutms { this->connectionQueue->get_timeout_ms() };
 
     listen(this->acceptSocket, Config::singleton().get_Tmax());
     debug_print(this, "Listening for incoming messages");
 
-    //pthread_attr_init(&clientThreadOptions);
-    //pthread_attr_setdetachstate(&clientThreadOptions,
-            //PTHREAD_CREATE_DETACHED);
-
     while (1) {
-        //pthread_mutex_lock(&clientSocketGuard);
+        // Wait a limited ammount of time for incoming connections if the
+        // socket is in non-blocking mode.
+        if (timeoutms)
+        {
+            pollfd descriptor;
+            descriptor.fd = this->acceptSocket;
+            descriptor.events = POLLIN;
+
+            auto ready { poll(&descriptor, 1, *timeoutms) };
+
+            if (0 == ready)
+            {
+                // timeout
+                timeout_return(this, "Timeout at waiting for incoming network connection");
+            }
+            else if (-1 == ready)
+            {
+                // error
+                error_return(this, "Failed to poll socket ", this->acceptSocket);
+            }
+        }
+
         clientSocket = accept(this->acceptSocket, NULL, NULL);
         if (0 > clientSocket) {
-            //pthread_mutex_unlock(&clientSocketGuard);
             continue;
         }
 
-        //if (0 != pthread_create(&clientThread, &clientThreadOptions,
-                //thread_main, &clientSocket)) {
-            //pthread_mutex_unlock(&clientSocketGuard);
-            //success = EXIT_FAILURE;
-            //break;
-        //}
-
         debug_print(this, "Accepted client connection on ", clientSocket);
         this->connectionQueue->add(clientSocket);
+
+        // Don't keep on waiting for other connections in non-blocking mode.
+        if (timeoutms)
+        {
+            break;
+        }
     }
 
     close(acceptSocket);
-    //pthread_attr_destroy(&clientThreadOptions);
 }
 

@@ -10,6 +10,7 @@
 #include <sys/syscall.h>
 #include <vector>
 #include "BBServException.h"
+#include "BBServTimeout.h"
 
 #ifdef SYS_gettid
 pid_t gettid();
@@ -125,6 +126,21 @@ void error_return(OriginT origin, ArgsT... args)
         sout << "ERROR - [" << gettid() << "] " << typeid(origin).name() << ": ";
         (sout << ... << args) << ' ' << std::endl;
         throw BBServException(sout.str());
+    }
+}
+
+/**
+ *Print timeout messages.
+ */
+template<typename OriginT, typename... ArgsT>
+void timeout_return(OriginT origin, ArgsT... args)
+{
+    if (Config::singleton().is_debug())
+    {
+        std::stringstream sout;
+        sout << "ERROR - [" << gettid() << "] " << typeid(origin).name() << ": ";
+        (sout << ... << args) << ' ' << std::endl;
+        throw BBServTimeout(sout.str());
     }
 }
 

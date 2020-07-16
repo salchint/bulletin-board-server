@@ -70,7 +70,7 @@ int main(int argc, char *argv[]) {
             add_peer(argv[optind]);
         }
 
-        auto connectionQueue = std::make_shared<ConnectionQueue>();
+        auto connectionQueue = std::make_shared<ConnectionQueue>(false);
 
         InConnection inConnection(connectionQueue);
         ThreadPool agents(Config::singleton().get_Tmax());
