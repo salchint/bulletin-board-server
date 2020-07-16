@@ -6,6 +6,7 @@
 #include <vector>
 #include <memory>
 #include <variant>
+#include <optional>
 #include "ConnectionQueue.h"
 #include "BBServException.h"
 #include "CmdUser.h"
@@ -48,4 +49,12 @@ class ThreadPool
          *Wait for the next incoming client connection and return the socket.
          */
         int get_connection() noexcept;
+
+        /**
+         * Determine the standard timeout in ms for network operations.
+         *
+         * Returns the timeout in milli seconds in case of non-blocking mode,
+         * std::nullopt else.
+         */
+        std::optional<int> get_timeout_ms() noexcept;
 };

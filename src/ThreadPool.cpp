@@ -11,13 +11,14 @@
 #include <vector>
 #include <array>
 #include <optional>
+#include <poll.h>
 #include "SessionResources.h"
 
 /**
  *Provide operator() for all availble commands.
  */
-template<class... Ts> struct Overload : Ts... { using Ts::operator()...; };
-template<class... Ts> Overload(Ts...) -> Overload<Ts...>;
+//template<class... Ts> struct Overload : Ts... { using Ts::operator()...; };
+//template<class... Ts> Overload(Ts...) -> Overload<Ts...>;
 
 
 /**
@@ -103,12 +104,36 @@ static void* thread_main(void* p)
         }
         catch (const BBServException& error)
         {
-            std::cout << "Stop processing client request on socket " << resources.get_clientSocket()
-               << ": " << error.what() << std::endl;
+            std::cout << "Stop processing client request on socket "
+                << resources.get_clientSocket() << ": " << error.what()
+                << std::endl;
             return nullptr;
         }
 
         print_commands(resources.get_stream());
+
+        // In non-blocking mode, first check if there are data to be received.
+        if (pool->get_timeout_ms())
+        {
+            pollfd descriptor;
+            descriptor.fd = resources.get_clientSocket();
+            descriptor.events = POLLIN;
+
+            auto ready { poll(&descriptor, 1, pool->get_timeout_ms().value()) };
+
+            if (0 == ready)
+            {
+                // timeout
+                // TODO
+            }
+            else if (-1 == ready)
+            {
+                // error
+                std::cout << "ERROR - Failed to poll for incoming data at socket "
+                    << resources.get_clientSocket() << std::endl;
+                return nullptr;
+            }
+        }
 
         while (fgets(line.data(), line.size(), resources.get_stream()))
         {
@@ -182,4 +207,9 @@ void ThreadPool::operate(std::shared_ptr<ConnectionQueue>& qu)
 int ThreadPool::get_connection() noexcept
 {
     return this->connectionQueue->get();
+}
+
+std::optional<int> ThreadPool::get_timeout_ms() noexcept
+{
+    return this->connectionQueue->get_timeout_ms();
 }
