@@ -8,11 +8,17 @@
 #include "ThreadPool.h"
 #include "ConnectionQueue.h"
 
+/**
+ *Forward the given peer definition to the configuration.
+ */
 void add_peer(std::string peer)
 {
     Config::singleton().add_peer(peer);
 }
 
+/**
+ *Print the program's how-to-use to stdout.
+ */
 void print_usage() {
     std::cout << "bbserv - Bulletin Board Server" << std::endl;
     std::cout << std::endl;
@@ -26,10 +32,13 @@ void print_usage() {
     std::cout << "  -T overrides THMAX according to its argument." << std::endl;
     std::cout << "  -p overrides the port number bp according to its argument." << std::endl;
     std::cout << "  -s overrides the port number sp according to its argument." << std::endl;
-    std::cout << "  -f (with no argument) forces deamon behavior to false." << std::endl;
+    std::cout << "  -f (with no argument) forces daemon behavior to false." << std::endl;
     std::cout << "  -d (with no argument) forces debugging facilities to true." << std::endl;
 }
 
+/**
+ *The program's main entry point.
+ */
 int main(int argc, char *argv[]) {
     const char* optionString { "hb:T:p:s:fd" };
     char option { '\0' };

@@ -12,7 +12,7 @@ size_t CmdWrite::update_message_number()
     auto &out =  std::ios_base::out;
     auto &trunc =  std::ios_base::trunc;
 
-    std::string_view noFile { Config::singleton().get_bbfile() + ".no" };
+    std::string noFile { Config::singleton().get_bbfile() + ".no" };
     std::fstream io(noFile.data());
     size_t number;
 
@@ -31,8 +31,11 @@ size_t CmdWrite::update_message_number()
 
     if (io.fail())
     {
-        error_return(this, "Failed to read/write message number (", noFile, ")");
+        error_return(this, "Failed to read/write message number (", noFile, "), state=",
+                name_statebits(io.rdstate()));
     }
+
+    debug_print(this, "Current message number: ", number);
     return number;
 }
 
@@ -60,6 +63,7 @@ void CmdWrite::execute()
         // Create the file if needed
         if (fout.fail())
         {
+            debug_print(this, "Creating file: ", Config::singleton().get_bbfile());
             fout.open(Config::singleton().get_bbfile(), in|out|trunc);
             fout.flush();
         }

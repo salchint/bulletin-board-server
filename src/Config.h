@@ -120,13 +120,10 @@ class Config
 template<typename OriginT, typename... ArgsT>
 void error_return(OriginT origin, ArgsT... args)
 {
-    if (Config::singleton().is_debug())
-    {
-        std::stringstream sout;
-        sout << "ERROR - [" << gettid() << "] " << typeid(origin).name() << ": ";
-        (sout << ... << args) << ' ' << std::endl;
-        throw BBServException(sout.str());
-    }
+    std::stringstream sout;
+    sout << "ERROR - [" << gettid() << "] " << typeid(origin).name() << ": ";
+    (sout << ... << args) << ' ' << std::endl;
+    throw BBServException(sout.str());
 }
 
 /**
@@ -135,13 +132,10 @@ void error_return(OriginT origin, ArgsT... args)
 template<typename OriginT, typename... ArgsT>
 void timeout_return(OriginT origin, ArgsT... args)
 {
-    if (Config::singleton().is_debug())
-    {
-        std::stringstream sout;
-        sout << "ERROR - [" << gettid() << "] " << typeid(origin).name() << ": ";
-        (sout << ... << args) << ' ' << std::endl;
-        throw BBServTimeout(sout.str());
-    }
+    std::stringstream sout;
+    sout << "ERROR - [" << gettid() << "] " << typeid(origin).name() << ": ";
+    (sout << ... << args) << ' ' << std::endl;
+    throw BBServTimeout(sout.str());
 }
 
 /**
