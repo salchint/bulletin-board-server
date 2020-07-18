@@ -76,12 +76,15 @@ int main(int argc, char *argv[]) {
         ThreadPool agents(Config::singleton().get_Tmax());
 
         agents.operate(connectionQueue);
-        inConnection.listen_on(Config::singleton().get_bport());
+        inConnection.operate(Config::singleton().get_bport());
     }
     catch (const BBServException& error)
     {
         std::cout << error.what() << std::endl;
     }
+
+    std::cout << "Press ENTER to quit" << std::endl;
+    std::cin.ignore(std::numeric_limits<std::streamsize>::max(), '\n');
 
     return 0;
 }

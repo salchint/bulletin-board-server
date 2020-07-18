@@ -1,12 +1,43 @@
 #include "InConnection.h"
 #include <cstring>
+#include <memory>
 #include <unistd.h>
 #include <sys/socket.h>
 #include <netinet/in.h>
 #include <arpa/inet.h>
 #include <fcntl.h>
 #include <poll.h>
+#include <pthread.h>
 #include "Config.h"
+
+/**
+ *Data passed on to the thread/context.
+ */
+struct ContextData
+{
+    ContextData(InConnection* self, in_port_t port)
+        : self(self)
+        , port(port)
+    {};
+
+    InConnection* self {nullptr};
+    in_port_t port {0};
+};
+
+/**
+ *The thread's main entry point.
+ */
+static void* thread_main(void* p)
+{
+    auto contextData { reinterpret_cast<ContextData*>(p) };
+    auto port { contextData->port };
+    auto self { contextData->self };
+    delete contextData;
+
+    self->listen_on(port);
+
+    return nullptr;
+}
 
 InConnection::InConnection(std::shared_ptr<ConnectionQueue>& qu)
 {
@@ -25,6 +56,27 @@ void InConnection::listen_on(/*const std::string_view& ipaddress,*/ in_port_t po
 {
     open_incoming_conn(/*ipaddress,*/ port);
     listen_for_clients();
+}
+
+void InConnection::operate(/*const std::string_view& ipaddress,*/ in_port_t port)
+{
+    pthread_t context;
+    pthread_attr_t contextOptions;
+    pthread_attr_init(&contextOptions);
+    pthread_attr_setdetachstate(&contextOptions, PTHREAD_CREATE_DETACHED);
+
+    auto contextData = new ContextData(this, port);
+
+    bool success { 0 == pthread_create(&context, &contextOptions,
+            thread_main, reinterpret_cast<void*>(contextData))};
+
+    if (!success)
+    {
+        error_return(this, "Failed to create context: ", strerror(errno));
+    }
+
+    pthread_attr_destroy(&contextOptions);
+    debug_print(this, "Context created and ready");
 }
 
 /**

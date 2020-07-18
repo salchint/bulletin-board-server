@@ -29,6 +29,13 @@ class InConnection
          */
         void listen_on(/*const std::string_view& ipaddress,*/ in_port_t port);
 
+        /**
+         *Start working in your own thread context.
+         *
+         * Upon error might throw BBServException.
+         */
+        void operate(/*const std::string_view& ipaddress,*/ in_port_t port);
+
     protected:
         void open_incoming_conn(/*const std::string_view& ipaddress,*/ in_port_t port);
         void listen_for_clients();
