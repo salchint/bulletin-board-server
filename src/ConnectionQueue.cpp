@@ -14,7 +14,17 @@ void ConnectionQueue::add(int clientSocket) noexcept
     pthread_cond_signal(&queueCondition);
 }
 
-int ConnectionQueue::get() noexcept
+void ConnectionQueue::add(BroadcastCommand& broadcast) noexcept
+{
+    AutoLock guard(&queueMutex);
+
+    this->connectionQueue.emplace(broadcast);
+
+    guard.unlock();
+    pthread_cond_signal(&queueCondition);
+}
+
+ConnectionQueue::Entry_t ConnectionQueue::get() noexcept
 {
     AutoLock guard(&queueMutex);
 
@@ -23,21 +33,8 @@ int ConnectionQueue::get() noexcept
         pthread_cond_wait(&queueCondition, &queueMutex);
     }
 
-    int clientSocket { this->connectionQueue.front() };
+    auto entry { this->connectionQueue.front() };
     this->connectionQueue.pop();
-    return clientSocket;
+    return entry;
 }
 
-bool ConnectionQueue::is_nonblocking() const noexcept
-{
-    return this->isNonblocking;
-}
-
-std::optional<int> ConnectionQueue::get_timeout_ms() const noexcept
-{
-    if (is_nonblocking())
-    {
-        return 5000;  // ms
-    }
-    return {};
-}

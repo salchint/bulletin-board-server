@@ -14,6 +14,9 @@
 #include "CmdRead.h"
 #include "CmdReplace.h"
 #include "CmdQuit.h"
+#include "CmdPrecommit.h"
+#include "CmdCommit.h"
+#include "CmdAcknowledge.h"
 
 /**
  *A container of agents operating on client requests.
@@ -21,7 +24,8 @@
 class ThreadPool
 {
     public:
-        using Commands_t = std::variant<CmdUser, CmdWrite, CmdRead, CmdReplace, CmdQuit>;
+        using Commands_t = std::variant<CmdUser, CmdWrite, CmdRead, CmdReplace, CmdQuit,
+              CmdPrecommit, CmdCommit, CmdAcknowledge>;
 
     protected:
         size_t size {1};
@@ -48,13 +52,11 @@ class ThreadPool
         /**
          *Wait for the next incoming client connection and return the socket.
          */
-        int get_connection() noexcept;
+        ConnectionQueue::Entry_t get_entry() noexcept;
 
         /**
-         * Determine the standard timeout in ms for network operations.
-         *
-         * Returns the timeout in milli seconds in case of non-blocking mode,
-         * std::nullopt else.
+         *Get the ConnectionQueue instance this thread pool is operating on.
          */
-        std::optional<int> get_timeout_ms() noexcept;
+        ConnectionQueue* get_connection_queue() noexcept;
+
 };

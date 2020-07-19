@@ -39,9 +39,10 @@ static void* thread_main(void* p)
     return nullptr;
 }
 
-InConnection::InConnection(std::shared_ptr<ConnectionQueue>& qu)
+InConnection::InConnection(std::shared_ptr<ConnectionQueue>& qu, bool isNonblocking)
 {
     this->connectionQueue = qu;
+    this->isNonblocking = isNonblocking;
 }
 
 InConnection::~InConnection()
@@ -100,7 +101,7 @@ void InConnection::open_incoming_conn(/*const std::string_view& ipaddress,*/ in_
     setsockopt(this->acceptSocket, SOL_SOCKET, SO_REUSEADDR, (void*)&enable,
             sizeof(enable));
 
-    if (this->connectionQueue->is_nonblocking())
+    if (this->is_nonblocking())
     {
         fcntl(this->acceptSocket, F_SETFL, O_NONBLOCK);
     }
@@ -131,7 +132,6 @@ void InConnection::open_incoming_conn(/*const std::string_view& ipaddress,*/ in_
 void InConnection::listen_for_clients()
 {
     auto clientSocket {0};
-    auto timeoutms { this->connectionQueue->get_timeout_ms() };
 
     listen(this->acceptSocket, Config::singleton().get_Tmax());
     debug_print(this, "Listening for incoming messages");
@@ -139,13 +139,13 @@ void InConnection::listen_for_clients()
     while (1) {
         // Wait a limited ammount of time for incoming connections if the
         // socket is in non-blocking mode.
-        if (timeoutms)
+        if (this->is_nonblocking())
         {
             pollfd descriptor;
             descriptor.fd = this->acceptSocket;
             descriptor.events = POLLIN;
 
-            auto ready { poll(&descriptor, 1, *timeoutms) };
+            auto ready { poll(&descriptor, 1, Config::singleton().get_network_timeout_ms()) };
 
             if (0 == ready)
             {
@@ -168,12 +168,17 @@ void InConnection::listen_for_clients()
         this->connectionQueue->add(clientSocket);
 
         // Don't keep on waiting for other connections in non-blocking mode.
-        if (timeoutms)
+        if (this->is_nonblocking())
         {
             break;
         }
     }
 
     close(acceptSocket);
+}
+
+bool InConnection::is_nonblocking()
+{
+    return this->isNonblocking;
 }
 

@@ -1,4 +1,4 @@
-//Filename:  ThreadPool.cpp
+///Filename:  ThreadPool.cpp
 
 #include "ThreadPool.h"
 #include "Config.h"
@@ -8,21 +8,27 @@
 #include <cstdio>
 #include <cstdlib>
 #include <sstream>
+#include <iomanip>
 #include <vector>
 #include <array>
 #include <optional>
 #include <poll.h>
+#include <fcntl.h>
+#include <sys/types.h>
+#include <sys/socket.h>
+#include <netdb.h>
 #include "SessionResources.h"
+#include "CmdBuilder.h"
 
 /**
  *Provide operator() for all availble commands.
  */
-//template<class... Ts> struct Overload : Ts... { using Ts::operator()...; };
-//template<class... Ts> Overload(Ts...) -> Overload<Ts...>;
+template<class... Ts> struct Overload : Ts... { using Ts::operator()...; };
+template<class... Ts> Overload(Ts...) -> Overload<Ts...>;
 
 
 /**
- *Print the supported commands as a wellcome message.
+ *Print the supported commands as a welcome message.
  */
 static void print_commands(FILE* stream)
 {
@@ -43,43 +49,266 @@ static void open_socket_stream(int socketNumber, FILE*& stream)
 }
 
 /**
- * Build a command object for the given command ID.
+ * Establish a network connection to the given peer.
  *
- * This function acts as a builder for all the supported command objects. It
- * returns a specific command object or std::nullopt if the requested command
- * is not supported.
- *
- * \param commandId Supported command identifiers include USER, WRITE, READ,
- *                  REPLACE and QUIT.
- * \param line  The received request message from the client. It is ought to
- *              start with the command identifier and may convey additional
- *              arguments.
- * \param resources Resources bound to this client connection including the
- *                  clients name as issued by the USER command.
+ * Returns a socket in non-blocking mode to send the broadcast commands to.
  */
-static std::optional<ThreadPool::Commands_t> build_command(const std::string& commandId, const char* line, SessionResources& resources)
+int create_peer_socket(ThreadPool* pool, Peer& peer)
 {
-    if (commandId == "USER")
+    addrinfo hints;
+    addrinfo *serverInfo;
+    auto peerSocket {-1};
+
+    std::memset(&hints, 0, sizeof(addrinfo));
+    hints.ai_family = AF_INET;
+    hints.ai_socktype = SOCK_STREAM;
+
+    auto status { getaddrinfo(peer.host.data(), std::to_string(peer.port).data(),
+            &hints, &serverInfo) };
+
+    if (0 != status)
     {
-        return CmdUser(commandId, resources.get_stream(), line, resources.get_user());
+        error_return(pool, "Failed to get the address info of ", peer,
+                ": ", gai_strerror(status));
     }
-    else if (commandId == "WRITE")
+
+    for (auto info {serverInfo}; info; info = info->ai_next)
     {
-        return CmdWrite(commandId, resources.get_stream(), line, resources.get_user());
+        // Check if a socket can be created from the address
+        peerSocket = socket(info->ai_family, info->ai_socktype, info->ai_protocol);
+        if (-1 == peerSocket)
+        {
+            // This has not been the right address
+            debug_print(pool, "Probing for socket ", peerSocket, " failed");
+            peerSocket = -1;
+            continue;
+        }
+
+        //fcntl(peerSocket, F_SETFL, O_NONBLOCK);
+
+        // In non-blocking mode, first check if the remote host is ready to connect
+        pollfd descriptor;
+        descriptor.fd = peerSocket;
+        descriptor.events = POLLIN;
+
+        auto ready { poll(&descriptor, 1, Config::singleton().get_network_timeout_ms()) };
+
+        if (0 == ready)
+        {
+            // timeout
+            debug_print(pool, "Timeout occurred");
+            peerSocket = -1;
+            continue;
+        }
+        else if (-1 == ready)
+        {
+            // error
+            debug_print(pool, "Failed to poll connection on ", peerSocket, "; ",
+                    strerror(errno));
+            peerSocket = -1;
+            continue;
+        }
+        //debug_print(pool, "TODO! Waiting for 3 sec");
+        //usleep(3000);
+
+        // Check if the connection can be established finally
+        status = connect(peerSocket, info->ai_addr, info->ai_addrlen);
+        if (-1 == status)
+        {
+            // This has not been the right address
+            debug_print(pool, "Cannot use socket ", peerSocket, " for connection: ",
+                    strerror(errno));
+            peerSocket = -1;
+            continue;
+        }
+
+        // If we come here, we have the right address and the remote host is ready
+        debug_print(pool, "Connected socket ", peerSocket, " to peer ", peer);
+        break;
     }
-    else if (commandId == "READ")
+
+    freeaddrinfo(serverInfo);
+    debug_print(pool, "Created peer socket ", peerSocket);
+    return peerSocket;
+}
+
+/**
+ *Wait on the given peer socket for some data to arrive.
+ */
+static void wait_for_data(ThreadPool* pool, int peerSocket, BroadcastCommand& command)
+{
+    pollfd descriptor;
+    descriptor.fd = peerSocket;
+    descriptor.events = POLLIN;
+
+    auto ready { poll(&descriptor, 1, Config::singleton().get_network_timeout_ms()) };
+
+    if (0 == ready)
     {
-        return CmdRead(commandId, resources.get_stream(), line, resources.get_user());
+        // timeout
+        debug_print(pool, "Timeout occurred");
+        timeout_return(pool, "Peer ", command.peer, " did not respond in time");
     }
-    else if (commandId == "REPLACE")
+    else if (-1 == ready)
     {
-        return CmdReplace(commandId, resources.get_stream(), line, resources.get_user());
+        // error
+        error_return("Failed to poll for incoming data at socket ", peerSocket);
     }
-    else if (commandId == "QUIT")
+    debug_print(pool, "Data available on socket ", peerSocket);
+}
+
+/**
+ *Process request to send the given command to the given peer.
+ */
+static void* process(ThreadPool* pool, SessionResources& resources, BroadcastCommand command)
+{
+    std::array<char, 1024> line;
+    std::array<char, 16> commandId;
+    auto read {line.data()};
+
+    debug_print(pool, "Dequeued command to be sent to peer: ", command.command,
+            "/", command.peer);
+
+    auto peerSocket { create_peer_socket(pool, command.peer) };
+
+    try
     {
-        return CmdQuit(commandId, resources.get_stream(), line, resources.get_user());
+        open_socket_stream(peerSocket, resources.get_stream());
+
+        // In non-blocking mode, first check if there are data to be received.
+        debug_print(pool, "Try to read data from ", peerSocket);
+        wait_for_data(pool, peerSocket, command);
+
+        read = fgets(line.data(), line.size(), resources.get_stream());
+        if (!read)
+        {
+            error_return(pool, "Failed to read from socket ", peerSocket,
+                    strerror(errno)); }
+            debug_print(pool, "Received on ", peerSocket, ": ", line.data());
+
+            // Consume and ignore the welcome message
+            if (0 == strncmp("0.0", line.data(), 3))
+            {
+            }
+
+            sscanf(command.command.data(), "%s ", commandId.data());
+
+            auto commandObj { build_command(commandId.data(), command.command.data(),
+                    resources, pool->get_connection_queue()).value() };
+
+            std::visit([](auto&& cmd) { cmd.execute(); }, commandObj);
+
     }
-    return {};
+    catch (const std::bad_optional_access&)
+    {
+        std::cout << "ERROR - Failed to build command object from unknown '"
+            << line.data() <<"'" << std::endl;
+    }
+    catch (const BBServTimeout& timeout)
+    {
+        std::cout << timeout.what() << std::endl;
+        return nullptr;
+    }
+    catch (const BBServException& error)
+    {
+        std::cout << error.what() << std::endl;
+
+        return nullptr;
+    }
+
+    // Shutdown in a civilized manner
+    auto commandQuit { build_command("QUIT", "QUIT", resources, pool->get_connection_queue()).value() };
+    std::visit([](auto&& cmd) { cmd.execute(); }, commandQuit);
+
+    debug_print(pool, "Peer connection closed on ", peerSocket);
+    return nullptr;
+}
+
+/**
+ *Process request to handle incoming client connections.
+ */
+static void* process(ThreadPool* pool, SessionResources& resources, int clientSocket)
+{
+    std::array<char, 16> commandId;
+    std::array<char, 1024> line;
+
+    resources.get_clientSocket() = clientSocket;
+
+    try
+    {
+        open_socket_stream(resources.get_clientSocket(), resources.get_stream());
+    }
+    catch (const BBServException& error)
+    {
+        std::cout << "Stop processing client request on socket "
+            << resources.get_clientSocket() << ": " << error.what()
+            << std::endl;
+        return nullptr;
+    }
+
+    print_commands(resources.get_stream());
+
+    //// In non-blocking mode, first check if there are data to be received.
+    //if (pool->get_timeout_ms())
+    //{
+        //pollfd descriptor;
+        //descriptor.fd = resources.get_clientSocket();
+        //descriptor.events = POLLIN;
+
+        //auto ready { poll(&descriptor, 1, pool->get_timeout_ms().value()) };
+
+        //if (0 == ready)
+        //{
+            //// timeout
+            //// TODO
+        //}
+        //else if (-1 == ready)
+        //{
+            //// error
+            //std::cout << "ERROR - Failed to poll for incoming data at socket "
+                //<< resources.get_clientSocket() << std::endl;
+            //return nullptr;
+        //}
+    //}
+
+    while (fgets(line.data(), line.size(), resources.get_stream()))
+    {
+        debug_print(pool, "Received on ", resources.get_clientSocket(), ": ", line.data());
+
+        sscanf(line.data(), "%s ", commandId.data());
+
+        try
+        {
+            auto command { build_command(commandId.data(), line.data(), resources, pool->get_connection_queue()).value() };
+
+            std::visit([](auto&& command) { command.execute(); }, command);
+
+            if (0 == std::strncmp("QUIT", commandId.data(), 4))
+            {
+                break;
+            }
+
+        }
+        catch (const std::bad_optional_access&)
+        {
+            std::cout << "ERROR - Failed to build command object from unknown '" << line.data() <<"'" << std::endl;
+            continue;
+        }
+        catch (const BBServException& error)
+        {
+            std::cout << error.what() << std::endl;
+
+            // Shutdown in a civilized manner
+            auto command { build_command("QUIT", "QUIT", resources).value() };
+            std::visit([](auto&& command) { command.execute(); }, command);
+            break;
+        }
+
+    }
+
+    debug_print(pool, "Client connection closed on ", resources.get_clientSocket());
+
+    return nullptr;
 }
 
 /**
@@ -88,94 +317,29 @@ static std::optional<ThreadPool::Commands_t> build_command(const std::string& co
 static void* thread_main(void* p)
 {
     auto pool { reinterpret_cast<ThreadPool*>(p) };
-    std::array<char, 16> commandId;
-    std::array<char, 1024> line;
 
     for (;;)
     {
         SessionResources resources;
-        commandId.fill('\0');
-        line.fill('\0');
-        resources.get_clientSocket() = pool->get_connection();
+        auto entry { pool->get_entry() };
 
         try
         {
-            open_socket_stream(resources.get_clientSocket(), resources.get_stream());
+            std::visit(Overload {
+                    [&](int socket) { process(pool, resources, socket); },
+                    [&](BroadcastCommand cmd) { process(pool, resources, cmd); },
+                    }, entry);
         }
         catch (const BBServException& error)
         {
-            std::cout << "Stop processing client request on socket "
-                << resources.get_clientSocket() << ": " << error.what()
-                << std::endl;
-            return nullptr;
+            std::cout << error.what() << std::endl;
         }
-
-        print_commands(resources.get_stream());
-
-        // In non-blocking mode, first check if there are data to be received.
-        if (pool->get_timeout_ms())
-        {
-            pollfd descriptor;
-            descriptor.fd = resources.get_clientSocket();
-            descriptor.events = POLLIN;
-
-            auto ready { poll(&descriptor, 1, pool->get_timeout_ms().value()) };
-
-            if (0 == ready)
-            {
-                // timeout
-                // TODO
-            }
-            else if (-1 == ready)
-            {
-                // error
-                std::cout << "ERROR - Failed to poll for incoming data at socket "
-                    << resources.get_clientSocket() << std::endl;
-                return nullptr;
-            }
-        }
-
-        while (fgets(line.data(), line.size(), resources.get_stream()))
-        {
-            debug_print(pool, "Received on ", resources.get_clientSocket(), ": ", line.data());
-
-            sscanf(line.data(), "%s ", commandId.data());
-
-            try
-            {
-                ThreadPool::Commands_t command { build_command(commandId.data(), line.data(), resources).value() };
-
-                std::visit([](auto&& command) { command.execute(); }, command);
-
-                if (0 == std::strncmp("QUIT", commandId.data(), 4))
-                {
-                    break;
-                }
-
-            }
-            catch (const std::bad_optional_access&)
-            {
-                std::cout << "ERROR - Failed to build command object from unknown '" << line.data() <<"'" << std::endl;
-                continue;
-            }
-            catch (const BBServException& error)
-            {
-                std::cout << error.what() << std::endl;
-
-                // Shutdown in a civilized manner
-                auto command { build_command("QUIT", "QUIT", resources).value() };
-                std::visit([](auto&& command) { command.execute(); }, command);
-                break;
-            }
-
-        }
-
-        debug_print(pool, "Client connection closed on ", resources.get_clientSocket());
     }
-
-    return nullptr;
 }
 
+/**
+ *Create a pool of worker threads.
+ */
 static void create_pool(size_t size, std::vector<pthread_t>& container, ThreadPool* pool)
 {
     pthread_attr_t clientThreadOptions;
@@ -204,12 +368,12 @@ void ThreadPool::operate(std::shared_ptr<ConnectionQueue>& qu)
 
 }
 
-int ThreadPool::get_connection() noexcept
+ConnectionQueue::Entry_t ThreadPool::get_entry() noexcept
 {
     return this->connectionQueue->get();
 }
 
-std::optional<int> ThreadPool::get_timeout_ms() noexcept
+ConnectionQueue* ThreadPool::get_connection_queue() noexcept
 {
-    return this->connectionQueue->get_timeout_ms();
+    return this->connectionQueue.get();
 }

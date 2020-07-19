@@ -16,9 +16,10 @@ class InConnection
     protected:
         int acceptSocket {0};
         std::shared_ptr<ConnectionQueue> connectionQueue;
+        bool isNonblocking {false};
 
     public:
-        InConnection(std::shared_ptr<ConnectionQueue>& qu);
+        InConnection(std::shared_ptr<ConnectionQueue>& qu, bool isNonblocking = false);
         ~InConnection();
 
     public:
@@ -39,4 +40,5 @@ class InConnection
     protected:
         void open_incoming_conn(/*const std::string_view& ipaddress,*/ in_port_t port);
         void listen_for_clients();
+        bool is_nonblocking();
 };

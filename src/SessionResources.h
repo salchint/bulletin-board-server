@@ -3,13 +3,15 @@
 #pragma once
 
 #include <string>
+#include <memory>
 #include <cstdio>
 #include <utility>
 #include "Config.h"
 #include "BBServException.h"
+#include "AcknowledgeQueue.h"
 
 /**
- *RAII class controling the lifetime of resources, that belong to a connection to one client.
+ *RAII class controlling the lifetime of resources, that belong to a connection to one client.
  */
 class SessionResources
 {
@@ -17,6 +19,7 @@ class SessionResources
         std::string user { "nobody" };
         int clientSocket { 0 };
         FILE* stream { nullptr };
+        std::unique_ptr<AcknowledgeQueue> ackQueue;
 
     public:
         /**
@@ -48,6 +51,7 @@ class SessionResources
             : user(other.user)
             , clientSocket(other.clientSocket)
             , stream(other.stream)
+            , ackQueue(other.ackQueue.get())
         { }
 
         /**
@@ -57,6 +61,7 @@ class SessionResources
             : user(std::exchange(other.user, ""))
             , clientSocket(std::exchange(other.clientSocket, 0))
             , stream(std::exchange(other.stream, nullptr))
+            , ackQueue(std::exchange(other.ackQueue, nullptr))
         { }
 
         /**
@@ -76,6 +81,7 @@ class SessionResources
             user = std::exchange(other.user, "");
             clientSocket = std::exchange(other.clientSocket, 0);
             stream = std::exchange(other.stream, nullptr);
+            ackQueue = std::exchange(other.ackQueue, nullptr);
             return *this;
         }
 
@@ -92,5 +98,13 @@ class SessionResources
          *Get the reference to the stream attached to the client socket.
          */
         FILE*& get_stream() { return this->stream; }
+        /**
+         *Get the AcknowledgeQueue instance.
+         */
+        AcknowledgeQueue* get_ack_queue() { return this->ackQueue.get(); }
+        /**
+         *Set the AcknowledgeQueue instance.
+         */
+        void set_ack_queue(AcknowledgeQueue* p) { this->ackQueue.reset(p); }
 
 };

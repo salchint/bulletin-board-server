@@ -37,7 +37,7 @@ file) and a reference to the Connection Queue.
 
 This way the network connection to the clients or sibling bbserv instances is
 completely transparent to the Thread Pool. Only the information about the socket
-is transported and if it is to be run in non-blocking mode or not.
+is transported and if it is to be operated in non-blocking mode or not.
 
 Connection Queue
 ~~~~~~~~~~~~~~~~
@@ -70,6 +70,8 @@ Receiver:: Participant
 
 Trigger:: The Coordinator is processing an WRITE or REPLACE command.
 
+Reply:: ACK command including a success indicator.
+
 COMMIT
 ~~~~~~
 
@@ -79,12 +81,17 @@ Trigger:: All Participants have positively acknowledged PRECOMMIT.
 
 Payload:: A copy of the WRITE or REPLACE command.
 
+Reply:: SUCCESSFULL or UNSUCCESSFULL command let the Coordinator know the
+result of requested operation.
+
 ACK
 ~~~
 
 Receiver:: Coordinator
 
-Trigger:: Server is up an running.
+Trigger:: Peer is up an running.
+
+Payload:: This command carries "0" or "1" to indicate failure or success.
 
 SUCCESSFULL
 ~~~~~~~~~~~
@@ -98,7 +105,7 @@ Trigger::
 UNSUCCESSFULL
 ~~~~~~~~~~~~~
 
-Receiver:: Coordinator
+Receiver:: Coordinator, Participant
 
 Trigger::
  * Participant failed to process the WRITE or REPLACE command.
@@ -113,3 +120,17 @@ Receiver:: Participant
 Trigger:: Coordinator has received one or more negative acknowledgments to
 PRECOMMIT or awaiting it timed out.
 
+Multicasting
+~~~~~~~~~~~~
+
+All of these commands need to be broadcasted from the Coordinator to all the
+Participants. The initiating Command Object (e.g. the WRITE command initiates
+PRECOMMIT to be broadcasted) will enqueue the broadcast command (e.g. PRECOMMIT)
+together with all the peers in the Connection Queue.  Hence sending the
+broadcast-command (e.g. PRECOMMIT) is dispatched to Thread Pool again and
+processed in parallel.
+
+In addition, the initiating Command Object provides an instance of Acknowledge
+Queue, which is used to collect all the replies from the peers. The initiating
+Command Object uses it to determine if it can process further or needs to
+abort/undo the current command.

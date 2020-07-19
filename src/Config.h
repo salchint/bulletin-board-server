@@ -112,6 +112,10 @@ class Config
          * Upon parsing error, this method may throw a BBServException.
          */
         void add_peer(std::string& peer);
+        /**
+         *Get the default timeout in ms for non-blocking network operations.
+         */
+        int get_network_timeout_ms()                { return 5000; }
 };
 
 /**

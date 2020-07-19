@@ -5,6 +5,7 @@
 #include <string>
 #include <string_view>
 #include <fstream>
+#include "ConnectionQueue.h"
 
 size_t CmdWrite::update_message_number()
 {
@@ -39,6 +40,21 @@ size_t CmdWrite::update_message_number()
     return number;
 }
 
+bool CmdWrite::replicate_command()
+{
+    BroadcastCommand broadcast;
+
+    for (auto& peer : Config::singleton().get_peers())
+    {
+        debug_print(this, "Add PRECOMMIT/peer to connectionQueue: ", peer);
+        broadcast.peer = peer;
+        broadcast.command = "PRECOMMIT";
+        this->connectionQueue->add(broadcast);
+    }
+
+    return true;
+}
+
 void CmdWrite::execute()
 {
     auto &in =  std::ios_base::in;
@@ -57,10 +73,11 @@ void CmdWrite::execute()
 
     try
     {
+        // Get a new message ID and open the DB file
         auto id { update_message_number() };
         std::fstream fout (Config::singleton().get_bbfile());
 
-        // Create the file if needed
+        // Create the DB file if needed
         if (fout.fail())
         {
             debug_print(this, "Creating file: ", Config::singleton().get_bbfile());
@@ -72,6 +89,15 @@ void CmdWrite::execute()
         if (fout.fail())
         {
             error_return(this, "Failed to open/create file ", Config::singleton().get_bbfile());
+        }
+
+        if (this->connectionQueue)
+        {
+            // Have all the peers process this command as well
+            if (!replicate_command())
+            {
+                // TODO
+            }
         }
 
         fout.seekp(0, std::ios_base::end);
