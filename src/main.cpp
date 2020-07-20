@@ -91,7 +91,7 @@ int main(int argc, char *argv[]) {
 
         // Startup of threadpool operating on 's-port'
         auto replicationQueue = std::make_shared<ConnectionQueue>();
-        InConnection replicationConnection(replicationQueue);
+        InConnection replicationConnection(replicationQueue, true);
         ThreadPool replicationAgents(1);
         replicationAgents.operate(replicationQueue);
         replicationConnection.operate(Config::singleton().get_sport());
