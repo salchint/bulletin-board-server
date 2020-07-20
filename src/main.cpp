@@ -86,6 +86,9 @@ int main(int argc, char *argv[]) {
         agents.operate(connectionQueue);
         inConnection.operate(Config::singleton().get_bport());
 
+        // TODO Serialize the startup of threadpools and server sockets
+        usleep(500000);
+
         // Startup of threadpool operating on 's-port'
         auto replicationQueue = std::make_shared<ConnectionQueue>();
         InConnection replicationConnection(replicationQueue);

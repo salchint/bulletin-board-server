@@ -46,7 +46,7 @@ public:
         }
         else
         {
-            usleep(100000);
+            usleep(2000000);
         }
     }
 
