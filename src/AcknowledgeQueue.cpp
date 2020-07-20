@@ -2,7 +2,28 @@
 
 #include "AcknowledgeQueue.h"
 #include "AutoLock.h"
+#include <map>
+#include <memory>
 
+AcknowledgeQueue* AcknowledgeQueue::TheOne(size_t messageId, bool erase)
+{
+    static std::map<size_t, std::unique_ptr<AcknowledgeQueue>> theMap;
+
+    if (!erase)
+    {
+        if (theMap.find(messageId) == theMap.end())
+        {
+            theMap.insert(std::make_pair(messageId, std::make_unique<AcknowledgeQueue>()));
+        }
+        return theMap[messageId].get();
+    }
+    else
+    {
+        theMap.erase(theMap.find(messageId));
+    }
+
+    return nullptr;
+}
 
 void AcknowledgeQueue::add(bool success) noexcept
 {
@@ -14,7 +35,7 @@ void AcknowledgeQueue::add(bool success) noexcept
     pthread_cond_signal(&queueCondition);
 }
 
-size_t AcknowledgeQueue::check_success(size_t replyCount) noexcept
+bool AcknowledgeQueue::check_success(size_t replyCount) noexcept
 {
     AutoLock guard(&queueMutex);
 

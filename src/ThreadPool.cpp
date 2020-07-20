@@ -108,8 +108,6 @@ int create_peer_socket(ThreadPool* pool, Peer& peer)
             peerSocket = -1;
             continue;
         }
-        //debug_print(pool, "TODO! Waiting for 3 sec");
-        //usleep(3000);
 
         // Check if the connection can be established finally
         status = connect(peerSocket, info->ai_addr, info->ai_addrlen);
@@ -247,29 +245,6 @@ static void* process(ThreadPool* pool, SessionResources& resources, int clientSo
     }
 
     print_commands(resources.get_stream());
-
-    //// In non-blocking mode, first check if there are data to be received.
-    //if (pool->get_timeout_ms())
-    //{
-        //pollfd descriptor;
-        //descriptor.fd = resources.get_clientSocket();
-        //descriptor.events = POLLIN;
-
-        //auto ready { poll(&descriptor, 1, pool->get_timeout_ms().value()) };
-
-        //if (0 == ready)
-        //{
-            //// timeout
-            //// TODO
-        //}
-        //else if (-1 == ready)
-        //{
-            //// error
-            //std::cout << "ERROR - Failed to poll for incoming data at socket "
-                //<< resources.get_clientSocket() << std::endl;
-            //return nullptr;
-        //}
-    //}
 
     while (fgets(line.data(), line.size(), resources.get_stream()))
     {

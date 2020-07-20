@@ -37,7 +37,7 @@ file) and a reference to the Connection Queue.
 
 This way the network connection to the clients or sibling bbserv instances is
 completely transparent to the Thread Pool. Only the information about the socket
-is transported and if it is to be operated in non-blocking mode or not.
+is transported and the broadcast commands.
 
 Connection Queue
 ~~~~~~~~~~~~~~~~
@@ -45,6 +45,10 @@ Connection Queue
 The Connection Queue is the link between the Input Connection and the Thread
 Pool. It is implemented in a thread-safe manner, so it can be safely used from
 all the agents (i.e. worker threads).
+
+The Connection Queue is designed in a polymorphic manner, so it can relay local
+sockets for incoming client connections. But it can also contain broadcast
+commands, which are to be sent to peers for data replication.
 
 Input Connection
 ~~~~~~~~~~~~~~~~
@@ -72,6 +76,9 @@ Trigger:: The Coordinator is processing an WRITE or REPLACE command.
 
 Reply:: ACK command including a success indicator.
 
+Payload:: The server-generated identifier of the WRITE/REPLACE command, which
+is to be done.
+
 COMMIT
 ~~~~~~
 
@@ -91,7 +98,8 @@ Receiver:: Coordinator
 
 Trigger:: Peer is up an running.
 
-Payload:: This command carries "0" or "1" to indicate failure or success.
+Payload:: This command carries the message identifier, which has been passed
+through the PRECOMMIT command and "0" or "1" to indicate failure or success.
 
 SUCCESSFULL
 ~~~~~~~~~~~

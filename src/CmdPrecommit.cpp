@@ -1,6 +1,7 @@
 //Filename:  CmdPrecommit.cpp
 
 #include "CmdPrecommit.h"
+#include <sstream>
 
 void CmdPrecommit::execute()
 {
@@ -12,7 +13,11 @@ void CmdPrecommit::execute()
 
     debug_print(this, "Processing ", COMMAND_ID, " command\n");
 
+    auto messageId {0};
+    std::istringstream sin(this->line);
 
-    fprintf(this->stream, "ACK 1\n");
+    sin >> messageId;
+
+    fprintf(this->stream, "ACK %d 1\n", messageId);
     fflush(this->stream);
 }

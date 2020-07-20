@@ -16,10 +16,11 @@ void CmdAcknowledge::execute()
 
 
     auto success {0};
+    auto messageId {0};
     std::array<char, 100> dummy;
     std::istringstream sin(this->line);
 
-    sin >> dummy.data() >> success;
+    sin >> dummy.data() >> messageId >> success;
 
     if (sin.fail())
     {
@@ -27,5 +28,5 @@ void CmdAcknowledge::execute()
                 name_statebits(sin.rdstate()));
     }
 
-    this->ackQueue->add(success != 0);
+    AcknowledgeQueue::TheOne(messageId)->add(1 == success);
 }

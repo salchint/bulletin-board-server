@@ -47,6 +47,6 @@ class CmdWrite
         /**
          *Broadcast this WRITE command to known peers.
          */
-        bool replicate_command();
+        bool replicate_command(size_t messageId);
 };
 

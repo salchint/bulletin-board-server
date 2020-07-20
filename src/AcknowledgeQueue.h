@@ -4,6 +4,7 @@
 
 #include <pthread.h>
 #include <vector>
+#include <optional>
 #include "Config.h"
 
 /**
@@ -11,6 +12,9 @@
  */
 class AcknowledgeQueue
 {
+    public:
+        static AcknowledgeQueue* TheOne(size_t messageId, bool erase = false);
+
     protected:
         std::vector<bool> ackQueue;
 
@@ -31,6 +35,6 @@ class AcknowledgeQueue
          *
          * This function is thread-safe and may be used from all the agents.
          */
-        size_t check_success(size_t replyCount) noexcept;
+        bool check_success(size_t replyCount) noexcept;
 
 };

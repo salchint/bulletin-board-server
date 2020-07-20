@@ -40,7 +40,7 @@ size_t CmdWrite::update_message_number()
     return number;
 }
 
-bool CmdWrite::replicate_command()
+bool CmdWrite::replicate_command(size_t messageId)
 {
     BroadcastCommand broadcast;
 
@@ -48,9 +48,18 @@ bool CmdWrite::replicate_command()
     {
         debug_print(this, "Add PRECOMMIT/peer to connectionQueue: ", peer);
         broadcast.peer = peer;
-        broadcast.command = "PRECOMMIT";
+        broadcast.command = "PRECOMMIT ";
+        broadcast.command += std::to_string(messageId);
         this->connectionQueue->add(broadcast);
     }
+
+    // Wait for acknowledges from all peers
+    if (!AcknowledgeQueue::TheOne(messageId)->check_success(Config::singleton().get_peers().size()))
+    {
+        debug_print(this, "Did not get positive acknowledge from all peers");
+        return false;
+    }
+    debug_print(this, "All peers acknowledged");
 
     return true;
 }
@@ -80,7 +89,8 @@ void CmdWrite::execute()
         // Create the DB file if needed
         if (fout.fail())
         {
-            debug_print(this, "Creating file: ", Config::singleton().get_bbfile());
+            debug_print(this, "Creating file: ",
+                    Config::singleton().get_bbfile());
             fout.open(Config::singleton().get_bbfile(), in|out|trunc);
             fout.flush();
         }
@@ -88,18 +98,19 @@ void CmdWrite::execute()
         // Throw if this fails too
         if (fout.fail())
         {
-            error_return(this, "Failed to open/create file ", Config::singleton().get_bbfile());
-        }
+            error_return(this, "Failed to open/create file ",
+                    Config::singleton().get_bbfile()); }
 
         if (this->connectionQueue)
         {
             // Have all the peers process this command as well
-            if (!replicate_command())
+            if (!replicate_command(id))
             {
-                // TODO
+                // TODO undo
             }
         }
 
+        // Finally, the local write operation
         fout.seekp(0, std::ios_base::end);
         debug_print(this, "file pos ", fout.tellp());
         fout << id << "/" << this->user << "/" << message;

@@ -16,17 +16,15 @@ class CmdAcknowledge
         std::string commandId;
         FILE* stream {nullptr};
         const char* line {nullptr};
-        AcknowledgeQueue* ackQueue {nullptr};
 
     public:
         /**
          *Custom constructor accepting the command line received on the socket.
          */
-        CmdAcknowledge(const std::string& commandId, FILE* stream, const char* line, AcknowledgeQueue* ackQueue)
+        CmdAcknowledge(const std::string& commandId, FILE* stream, const char* line)
             : commandId(commandId)
             , stream(stream)
             , line(line)
-            , ackQueue(ackQueue)
         { }
 
     public:
