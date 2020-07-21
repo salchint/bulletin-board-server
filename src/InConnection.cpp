@@ -5,6 +5,7 @@
 #include <sys/socket.h>
 #include <netinet/in.h>
 #include <arpa/inet.h>
+#include <netdb.h>
 #include <fcntl.h>
 #include <poll.h>
 #include <errno.h>
@@ -81,12 +82,29 @@ void InConnection::open_incoming_conn(/*const std::string_view& ipaddress,*/ in_
     using std::string_view;
 
     int enable = 1;
-    sockaddr_in acceptAddress;
-    socklen_t addressSize = sizeof(sockaddr_in);
+    //sockaddr_in acceptAddress;
+    //socklen_t addressSize = sizeof(sockaddr_in);
 
-    memset(&acceptAddress, 0, addressSize);
+    addrinfo hints, *result;
 
-    resources.set_accept_socket ( socket(AF_INET, SOCK_STREAM, 0) );
+    //memset(&acceptAddress, 0, addressSize);
+    memset(&hints, 0, sizeof(hints));
+    hints.ai_family = AF_INET;
+    hints.ai_socktype = SOCK_STREAM;
+    hints.ai_flags = AI_PASSIVE;
+    auto portId { std::to_string(port) };
+
+    auto status { getaddrinfo(nullptr, portId.data(), &hints, &result) };
+    if (0 != status)
+    {
+        error_return(this, "Failed to determine address to bind socket to: ",
+                gai_strerror(status));
+    }
+
+    //resources.set_accept_socket ( socket(AF_INET, SOCK_STREAM, 0) );
+    resources.set_accept_socket (socket(result->ai_family,
+                result->ai_socktype, result->ai_protocol));
+
     if (0 > resources.get_accept_socket())
     {
         error_return(this, "Failed to connect to socket for incoming connections.");
@@ -99,16 +117,23 @@ void InConnection::open_incoming_conn(/*const std::string_view& ipaddress,*/ in_
         fcntl(resources.get_accept_socket(), F_SETFL, O_NONBLOCK);
     }
 
-    acceptAddress.sin_port = htons(port);
-    acceptAddress.sin_family = AF_INET;
-    acceptAddress.sin_addr.s_addr = INADDR_ANY;
-    if (0 != bind(resources.get_accept_socket(), (struct sockaddr*)(&acceptAddress),
-            addressSize)) {
+    //acceptAddress.sin_port = htons(port);
+    //acceptAddress.sin_family = AF_INET;
+    //acceptAddress.sin_addr.s_addr = INADDR_ANY;
+    //if (0 != bind(resources.get_accept_socket(), (struct sockaddr*)(&acceptAddress),
+            //addressSize))
+    if (0 != bind(resources.get_accept_socket(), result->ai_addr,
+                result->ai_addrlen))
+    {
         error_return(this, "Failed to bind socket to 0.0.0.0:", port);
     }
 
+    //debug_print(this, "Created socket ", resources.get_accept_socket(),
+            //" and bound it to ", inet_ntoa(acceptAddress.sin_addr), ":", port);
     debug_print(this, "Created socket ", resources.get_accept_socket(),
-            " and bound it to ", inet_ntoa(acceptAddress.sin_addr), ":", port);
+            " and bound it to ", inet_ntoa(((sockaddr_in*)result->ai_addr)->sin_addr), ":", port);
+
+    freeaddrinfo(result);
 }
 
 /**
