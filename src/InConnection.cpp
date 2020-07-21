@@ -7,6 +7,7 @@
 #include <arpa/inet.h>
 #include <fcntl.h>
 #include <poll.h>
+#include <errno.h>
 #include <pthread.h>
 #include "Config.h"
 
@@ -45,14 +46,6 @@ InConnection::InConnection(std::shared_ptr<ConnectionQueue>& qu, bool isNonblock
     this->isNonblocking = isNonblocking;
 }
 
-InConnection::~InConnection()
-{
-    if (this->acceptSocket) {
-       close(this->acceptSocket);
-       this->acceptSocket = 0;
-    }
-}
-
 void InConnection::listen_on(/*const std::string_view& ipaddress,*/ in_port_t port)
 {
     open_incoming_conn(/*ipaddress,*/ port);
@@ -88,39 +81,34 @@ void InConnection::open_incoming_conn(/*const std::string_view& ipaddress,*/ in_
     using std::string_view;
 
     int enable = 1;
-    struct sockaddr_in acceptAddress;
-    socklen_t addressSize = sizeof(struct sockaddr_in);
+    sockaddr_in acceptAddress;
+    socklen_t addressSize = sizeof(sockaddr_in);
 
     memset(&acceptAddress, 0, addressSize);
 
-    this->acceptSocket = socket(AF_INET, SOCK_STREAM, 0);
-    if (0 > this->acceptSocket)
+    resources.set_accept_socket ( socket(AF_INET, SOCK_STREAM, 0) );
+    if (0 > resources.get_accept_socket())
     {
         error_return(this, "Failed to connect to socket for incoming connections.");
     }
-    setsockopt(this->acceptSocket, SOL_SOCKET, SO_REUSEADDR, (void*)&enable,
+    setsockopt(resources.get_accept_socket(), SOL_SOCKET, SO_REUSEADDR, (void*)&enable,
             sizeof(enable));
 
     if (this->is_nonblocking())
     {
-        fcntl(this->acceptSocket, F_SETFL, O_NONBLOCK);
+        fcntl(resources.get_accept_socket(), F_SETFL, O_NONBLOCK);
     }
-
-    //if (!inet_aton(ipaddress.data(), &acceptAddress.sin_addr))
-    //{
-        //error_return(this, "Invalid IP-address");
-    //}
 
     acceptAddress.sin_port = htons(port);
     acceptAddress.sin_family = AF_INET;
     acceptAddress.sin_addr.s_addr = INADDR_ANY;
-    if (0 != bind(this->acceptSocket, (struct sockaddr*)(&acceptAddress),
+    if (0 != bind(resources.get_accept_socket(), (struct sockaddr*)(&acceptAddress),
             addressSize)) {
-        //error_return(this, "Failed to bind socket to ", ipaddress);
         error_return(this, "Failed to bind socket to 0.0.0.0:", port);
     }
 
-    debug_print(this, "Created socket and bound it to ", inet_ntoa(acceptAddress.sin_addr), ":", port);
+    debug_print(this, "Created socket ", resources.get_accept_socket(),
+            " and bound it to ", inet_ntoa(acceptAddress.sin_addr), ":", port);
 }
 
 /**
@@ -133,48 +121,62 @@ void InConnection::listen_for_clients()
 {
     auto clientSocket {0};
 
-    listen(this->acceptSocket, Config::singleton().get_Tmax());
+    listen(resources.get_accept_socket(), Config::singleton().get_Tmax());
     debug_print(this, "Listening for incoming messages");
 
-    while (1) {
+    while (1)
+    {
         // Wait a limited ammount of time for incoming connections if the
         // socket is in non-blocking mode.
         if (this->is_nonblocking())
         {
             pollfd descriptor;
-            descriptor.fd = this->acceptSocket;
+            descriptor.fd = resources.get_accept_socket();
             descriptor.events = POLLIN;
 
-            auto ready { poll(&descriptor, 1, Config::singleton().get_network_timeout_ms()) };
+            debug_print(this, "Waiting for data to arrive on socket ",
+                    resources.get_accept_socket());
+
+            auto ready { poll(&descriptor, 1,
+                    Config::singleton().get_network_timeout_ms()) };
 
             if (0 == ready)
             {
                 // timeout
-                timeout_return(this, "Timeout at waiting for incoming network connection");
+                //timeout_return(this, "Timeout at waiting for incoming network connection");
+
+                //just continue to keep on listening for data replication
+                continue;
             }
             else if (-1 == ready)
             {
                 // error
-                error_return(this, "Failed to poll socket ", this->acceptSocket);
+                error_return(this, "Failed to poll socket ", resources.get_accept_socket());
             }
         }
 
-        clientSocket = accept(this->acceptSocket, NULL, NULL);
-        if (0 > clientSocket) {
-            continue;
+        debug_print(this, "Accepting connection on socket ", resources.get_accept_socket());
+        clientSocket = accept(resources.get_accept_socket(), NULL, NULL);
+        if (-1 == clientSocket)
+        {
+            debug_print(this, "Failed to accept connection on socket ",
+                    resources.get_accept_socket(), ": ", strerror(errno));
+            break;
         }
 
         debug_print(this, "Accepted client connection on ", clientSocket);
         this->connectionQueue->add(clientSocket);
 
-        // Don't keep on waiting for other connections in non-blocking mode.
-        if (this->is_nonblocking())
-        {
-            break;
-        }
+        //// Don't keep on waiting for other connections in non-blocking mode.
+        //if (this->is_nonblocking())
+        //{
+            //break;
+        //}
     }
 
-    close(acceptSocket);
+    debug_print(this, "Stop listening on socket ", resources.get_accept_socket());
+    //close(this->acceptSocket);
+    //this->acceptSocket = 0;
 }
 
 bool InConnection::is_nonblocking()

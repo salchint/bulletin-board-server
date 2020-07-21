@@ -11,16 +11,74 @@
 
 #pragma once
 
+/**
+ *RAII wrapper for the socket.
+ */
+class ConnectionResources
+{
+    int acceptSocket {0};
+
+    public:
+    ConnectionResources()
+        : acceptSocket(0)
+    { }
+
+    ~ConnectionResources()
+    {
+        if (0 < this->acceptSocket)
+        {
+            debug_print(this, "Close connection at socket ",
+                    this->acceptSocket);
+            close(this->acceptSocket);
+            this->acceptSocket = 0;
+        }
+    }
+
+    ConnectionResources(const ConnectionResources& other)
+        : acceptSocket(other.acceptSocket)
+    { }
+
+    ConnectionResources(ConnectionResources&& other) noexcept
+        : acceptSocket(std::exchange(other.acceptSocket, 0))
+    { }
+
+    ConnectionResources& operator=(const ConnectionResources& other)
+    {
+        return *this = ConnectionResources(other);
+    }
+
+    ConnectionResources& operator=(ConnectionResources&& other) noexcept
+    {
+        std::swap(this->acceptSocket, other.acceptSocket);
+        return *this;
+    }
+
+    public:
+    void set_accept_socket(int acceptSocket)
+    {
+        debug_print(this, "!!! Set socket ", acceptSocket);
+        this->acceptSocket = acceptSocket;
+    }
+
+    int get_accept_socket()
+    {
+        return this->acceptSocket;
+    }
+
+};
+
+/**
+ *Network connection listener.
+ */
 class InConnection
 {
     protected:
-        int acceptSocket {0};
+        ConnectionResources resources;
         std::shared_ptr<ConnectionQueue> connectionQueue;
         bool isNonblocking {false};
 
     public:
         InConnection(std::shared_ptr<ConnectionQueue>& qu, bool isNonblocking = false);
-        ~InConnection();
 
     public:
         /**
