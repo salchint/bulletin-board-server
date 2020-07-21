@@ -79,6 +79,16 @@ int main(int argc, char *argv[]) {
             add_peer(argv[optind]);
         }
 
+        // Startup of threadpool operating on 's-port'
+        auto replicationQueue = std::make_shared<ConnectionQueue>();
+        InConnection replicationConnection(replicationQueue, true);
+        ThreadPool replicationAgents(1);
+        replicationAgents.operate(replicationQueue);
+        replicationConnection.operate(Config::singleton().get_sport());
+
+        // TODO Serialize the startup of threadpools and server sockets
+        usleep(3000000);
+
         // Startup of threadpool operating on 'b-port'
         auto connectionQueue = std::make_shared<ConnectionQueue>();
         InConnection inConnection(connectionQueue);
@@ -86,15 +96,6 @@ int main(int argc, char *argv[]) {
         agents.operate(connectionQueue);
         inConnection.operate(Config::singleton().get_bport());
 
-        // TODO Serialize the startup of threadpools and server sockets
-        usleep(500000);
-
-        // Startup of threadpool operating on 's-port'
-        auto replicationQueue = std::make_shared<ConnectionQueue>();
-        InConnection replicationConnection(replicationQueue, true);
-        ThreadPool replicationAgents(1);
-        replicationAgents.operate(replicationQueue);
-        replicationConnection.operate(Config::singleton().get_sport());
     }
     catch (const BBServException& error)
     {
