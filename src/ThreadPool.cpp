@@ -161,8 +161,10 @@ static void wait_for_data(ThreadPool* pool, int peerSocket, BroadcastCommand& co
 static void* process(ThreadPool* pool, SessionResources& resources, BroadcastCommand command)
 {
     std::array<char, 1024> line;
-    std::array<char, 16> commandId;
+    std::array<char, 100> commandId;
+    //std::string commandId;
     auto read {line.data()};
+    //commandId.resize(100);
 
     debug_print(pool, "Dequeued command to be sent to peer: ", command.command,
             "/", command.peer);
@@ -181,26 +183,30 @@ static void* process(ThreadPool* pool, SessionResources& resources, BroadcastCom
         if (!read)
         {
             error_return(pool, "Failed to read from socket ", peerSocket,
-                    strerror(errno)); }
-            debug_print(pool, "Received on ", peerSocket, ": ", line.data());
+                    strerror(errno));
+        }
+        debug_print(pool, "Received on ", peerSocket, ": ", line.data());
 
-            // Consume and ignore the welcome message
-            if (0 == strncmp("0.0", line.data(), 3))
-            {
-            }
+        // Consume and ignore the welcome/goodbye message from the peer
+        if (0 == strncmp("0.0", line.data(), 3)
+                || 0 == strncmp("4.0 BYE", line.data(), 7)
+           )
+        {
+        }
 
-            sscanf(command.command.data(), "%s ", commandId.data());
+        // Forward the broadcast command to the peer
+        sscanf(command.command.data(), "%s ", commandId.data());
 
-            auto commandObj { build_command(commandId.data(), command.command.data(),
-                    resources, pool->get_connection_queue()).value() };
+        auto commandObj { build_command(commandId.data(), command.command.data(),
+                resources, pool->get_connection_queue()).value() };
 
-            std::visit([](auto&& cmd) { cmd.execute(); }, commandObj);
+        std::visit([](auto&& cmd) { cmd.execute(); }, commandObj);
 
     }
     catch (const std::bad_optional_access&)
     {
         std::cout << "ERROR - Failed to build command object from unknown '"
-            << line.data() <<"'" << std::endl;
+            << command.command.data() <<"'" << std::endl;
     }
     catch (const BBServTimeout& timeout)
     {
@@ -214,9 +220,9 @@ static void* process(ThreadPool* pool, SessionResources& resources, BroadcastCom
         return nullptr;
     }
 
-    // Shutdown in a civilized manner
-    auto commandQuit { build_command("QUIT", "QUIT", resources, pool->get_connection_queue()).value() };
-    std::visit([](auto&& cmd) { cmd.execute(); }, commandQuit);
+    //// Shutdown in a civilized manner
+    //auto commandQuit { build_command("QUIT", "QUIT", resources, pool->get_connection_queue()).value() };
+    //std::visit([](auto&& cmd) { cmd.execute(); }, commandQuit);
 
     debug_print(pool, "Peer connection closed on ", peerSocket);
     return nullptr;
@@ -227,7 +233,7 @@ static void* process(ThreadPool* pool, SessionResources& resources, BroadcastCom
  */
 static void* process(ThreadPool* pool, SessionResources& resources, int clientSocket)
 {
-    std::array<char, 16> commandId;
+    std::array<char, 100> commandId;
     std::array<char, 1024> line;
 
     resources.get_clientSocket() = clientSocket;
@@ -254,6 +260,12 @@ static void* process(ThreadPool* pool, SessionResources& resources, int clientSo
 
         try
         {
+            // Consume and ignore the goodbye message
+            if (0== strncmp("4.0 BYE", line.data(), 7))
+            {
+                break;
+            }
+
             auto command { build_command(commandId.data(), line.data(), resources, pool->get_connection_queue()).value() };
 
             std::visit([](auto&& command) { command.execute(); }, command);
@@ -297,6 +309,7 @@ static void* thread_main(void* p)
     {
         SessionResources resources;
         auto entry { pool->get_entry() };
+        debug_print(pool, "Got connection queue entry");
 
         try
         {

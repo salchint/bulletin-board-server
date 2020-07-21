@@ -1,5 +1,6 @@
 //Filename:  CmdBuilder.cpp
 
+#include <iomanip>
 #include "CmdBuilder.h"
 #include "CmdUser.h"
 #include "CmdWrite.h"
@@ -9,6 +10,7 @@
 #include "CmdPrecommit.h"
 #include "CmdCommit.h"
 #include "CmdAcknowledge.h"
+#include "BroadcastPrecommit.h"
 
 
 /**
@@ -28,8 +30,10 @@
  * \param qu  The ConnectionQueue reference, which WRITE and REPLACE commands
  *            can use to enqueue their broadcast commands.
  */
-std::optional<ThreadPool::Commands_t> build_command(const std::string& commandId, const char* line, SessionResources& resources, ConnectionQueue* qu)
+std::optional<ThreadPool::Commands_t> build_command(const std::string commandId, const char* line, SessionResources& resources, ConnectionQueue* qu)
 {
+    debug_print(line, std::quoted(commandId));
+
     if (commandId == "USER")
     {
         return CmdUser(commandId, resources.get_stream(), line, resources.get_user());
@@ -60,7 +64,11 @@ std::optional<ThreadPool::Commands_t> build_command(const std::string& commandId
     }
     else if (commandId == "ACK")
     {
-        return CmdAcknowledge(commandId, resources.get_stream(), line, resources.get_ack_queue());
+        return CmdAcknowledge(commandId, resources.get_stream(), line);
+    }
+    else if (commandId == "BROADCAST-PRECOMMIT")
+    {
+        return BroadcastPrecommit("PRECOMMIT", resources.get_stream(), line);
     }
     return {};
 }

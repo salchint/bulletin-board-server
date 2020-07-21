@@ -17,6 +17,7 @@
 #include "CmdPrecommit.h"
 #include "CmdCommit.h"
 #include "CmdAcknowledge.h"
+#include "BroadcastPrecommit.h"
 
 /**
  *A container of agents operating on client requests.
@@ -25,7 +26,8 @@ class ThreadPool
 {
     public:
         using Commands_t = std::variant<CmdUser, CmdWrite, CmdRead, CmdReplace, CmdQuit,
-              CmdPrecommit, CmdCommit, CmdAcknowledge>;
+              CmdPrecommit, CmdCommit, CmdAcknowledge,
+              BroadcastPrecommit>;
 
     protected:
         size_t size {1};

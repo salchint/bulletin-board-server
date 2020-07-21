@@ -48,7 +48,7 @@ bool CmdWrite::replicate_command(size_t messageId)
     {
         debug_print(this, "Add PRECOMMIT/peer to connectionQueue: ", peer);
         broadcast.peer = peer;
-        broadcast.command = "PRECOMMIT ";
+        broadcast.command = "BROADCAST-PRECOMMIT ";
         broadcast.command += std::to_string(messageId);
         this->connectionQueue->add(broadcast);
     }
