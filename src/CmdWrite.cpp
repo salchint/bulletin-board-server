@@ -60,6 +60,7 @@ bool CmdWrite::replicate_command(size_t messageId)
         return false;
     }
     debug_print(this, "All peers acknowledged");
+    AcknowledgeQueue::TheOne(messageId, true);
 
     return true;
 }

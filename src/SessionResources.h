@@ -19,7 +19,7 @@ class SessionResources
         std::string user { "nobody" };
         int clientSocket { 0 };
         FILE* stream { nullptr };
-        std::unique_ptr<AcknowledgeQueue> ackQueue;
+        //std::unique_ptr<AcknowledgeQueue> ackQueue;
 
     public:
         /**
@@ -51,7 +51,7 @@ class SessionResources
             : user(other.user)
             , clientSocket(other.clientSocket)
             , stream(other.stream)
-            , ackQueue(other.ackQueue.get())
+            //, ackQueue(other.ackQueue.get())
         { }
 
         /**
@@ -61,7 +61,7 @@ class SessionResources
             : user(std::exchange(other.user, ""))
             , clientSocket(std::exchange(other.clientSocket, 0))
             , stream(std::exchange(other.stream, nullptr))
-            , ackQueue(std::exchange(other.ackQueue, nullptr))
+            //, ackQueue(std::exchange(other.ackQueue, nullptr))
         { }
 
         /**
@@ -81,7 +81,7 @@ class SessionResources
             user = std::exchange(other.user, "");
             clientSocket = std::exchange(other.clientSocket, 0);
             stream = std::exchange(other.stream, nullptr);
-            ackQueue = std::exchange(other.ackQueue, nullptr);
+            //ackQueue = std::exchange(other.ackQueue, nullptr);
             return *this;
         }
 
@@ -101,10 +101,10 @@ class SessionResources
         /**
          *Get the AcknowledgeQueue instance.
          */
-        AcknowledgeQueue* get_ack_queue() { return this->ackQueue.get(); }
+        //AcknowledgeQueue* get_ack_queue() { return this->ackQueue.get(); }
         /**
          *Set the AcknowledgeQueue instance.
          */
-        void set_ack_queue(AcknowledgeQueue* p) { this->ackQueue.reset(p); }
+        //void set_ack_queue(AcknowledgeQueue* p) { this->ackQueue.reset(p); }
 
 };

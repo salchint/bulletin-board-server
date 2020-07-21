@@ -4,10 +4,15 @@
 #include "AutoLock.h"
 #include <map>
 #include <memory>
+#include <pthread.h>
+
+pthread_mutex_t TheOneMapGuard = PTHREAD_MUTEX_INITIALIZER;
 
 AcknowledgeQueue* AcknowledgeQueue::TheOne(size_t messageId, bool erase)
 {
     static std::map<size_t, std::unique_ptr<AcknowledgeQueue>> theMap;
+
+    AutoLock guard (&TheOneMapGuard);
 
     if (!erase)
     {
@@ -28,20 +33,25 @@ AcknowledgeQueue* AcknowledgeQueue::TheOne(size_t messageId, bool erase)
 void AcknowledgeQueue::add(bool success) noexcept
 {
     AutoLock guard(&queueMutex);
+    debug_print(this, "Acknowledge positive=", success);
 
     this->ackQueue.emplace_back(success);
 
     guard.unlock();
     pthread_cond_signal(&queueCondition);
+    debug_print(this, "Acknowledge signalled");
 }
 
 bool AcknowledgeQueue::check_success(size_t replyCount) noexcept
 {
     AutoLock guard(&queueMutex);
+    debug_print(this, "Acknowledge check for ", replyCount, " replies");
 
     while (this->ackQueue.size() < replyCount)
     {
+        debug_print(this, "Old size=", this->ackQueue.size());
         pthread_cond_wait(&queueCondition, &queueMutex);
+        debug_print(this, "New size=", this->ackQueue.size());
     }
 
     // Determine if there is at least one negative reply
@@ -49,8 +59,10 @@ bool AcknowledgeQueue::check_success(size_t replyCount) noexcept
     {
         if (!success)
         {
+            debug_print(this, "Acknowledge check NOK");
             return false;
         }
     }
+    debug_print(this, "Acknowledge check OK");
     return true;
 }

@@ -13,6 +13,9 @@
 class AcknowledgeQueue
 {
     public:
+        /**
+         *Access the singleton catalog to get/set/erase the AcknowledgeQueue instance.
+         */
         static AcknowledgeQueue* TheOne(size_t messageId, bool erase = false);
 
     protected:
