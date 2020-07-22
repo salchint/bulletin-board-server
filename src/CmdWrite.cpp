@@ -40,13 +40,13 @@ size_t CmdWrite::update_message_number()
     return number;
 }
 
-bool CmdWrite::replicate_command(size_t messageId)
+void CmdWrite::broadcast_synchronous(std::string commandId, size_t messageId)
 {
     BroadcastCommand broadcast;
 
     for (auto& peer : Config::singleton().get_peers())
     {
-        debug_print(this, "Add PRECOMMIT/peer to connectionQueue: ", peer);
+        debug_print(this, "Add ", commandId, "/peer to connectionQueue: ", peer);
         broadcast.peer = peer;
         broadcast.command = "BROADCAST-PRECOMMIT ";
         broadcast.command += std::to_string(messageId);
@@ -56,11 +56,16 @@ bool CmdWrite::replicate_command(size_t messageId)
     // Wait for acknowledges from all peers
     if (!AcknowledgeQueue::TheOne(messageId)->check_success(Config::singleton().get_peers().size()))
     {
-        debug_print(this, "Did not get positive acknowledge from all peers");
-        return false;
+        error_return(this, "Did not get positive acknowledge from all peers");
     }
     debug_print(this, "All peers acknowledged");
     AcknowledgeQueue::TheOne(messageId, true);
+}
+
+bool CmdWrite::replicate_command(size_t messageId)
+{
+    broadcast_synchronous("PRECOMMIT", messageId);
+    broadcast_synchronous("COMMIT", messageId);
 
     return true;
 }
@@ -121,6 +126,8 @@ void CmdWrite::execute()
     }
     catch (const BBServException& error)
     {
+        // TODO undo
+
         fprintf(this->stream, "3.2 ERROR WRITE %s\n", error.what());
         fflush(this->stream);
     }

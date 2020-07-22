@@ -13,10 +13,27 @@ void BroadcastPrecommit::execute()
     }
 
     debug_print(this, "Broadcasting ", COMMAND_ID, " command\n");
-    
-    //TODO Falscher stream >> peer!!!
 
-    debug_print(this, "Broadcasting ", COMMAND_ID, " via socket ", fileno(this->stream));
+    //debug_print(this, "Broadcasting ", COMMAND_ID, " via socket ", fileno(this->stream));
     fprintf(this->stream, "%s\n", this->line + std::strlen("BROADCAST-"));
-    fflush(this->stream);
+
+    auto success {0};
+    auto messageId {0};
+    std::array<char, 1024> buffer;
+    std::array<char, 100> dummy;
+
+    std::fgets(buffer.data(), buffer.size(), this->stream);
+    std::istringstream sin(buffer.data());
+
+    debug_print(this, "Processing ACK reply: ", buffer.data());
+
+    sin >> dummy.data() >> messageId >> success;
+
+    if (sin.fail())
+    {
+        error_return(this, "Invalid ACK command; state=",
+                name_statebits(sin.rdstate()));
+    }
+
+    AcknowledgeQueue::TheOne(messageId)->add(1 == success);
 }

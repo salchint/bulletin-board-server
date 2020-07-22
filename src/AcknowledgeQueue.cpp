@@ -49,9 +49,7 @@ bool AcknowledgeQueue::check_success(size_t replyCount) noexcept
 
     while (this->ackQueue.size() < replyCount)
     {
-        debug_print(this, "Old size=", this->ackQueue.size());
         pthread_cond_wait(&queueCondition, &queueMutex);
-        debug_print(this, "New size=", this->ackQueue.size());
     }
 
     // Determine if there is at least one negative reply
