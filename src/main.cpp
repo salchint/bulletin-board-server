@@ -7,6 +7,10 @@
 #include "InConnection.h"
 #include "ThreadPool.h"
 #include "ConnectionQueue.h"
+#include "AutoLock.h"
+
+InConnection replicationConnection;
+InConnection inConnection;
 
 /**
  *Forward the given peer definition to the configuration.
@@ -81,20 +85,17 @@ int main(int argc, char *argv[]) {
 
         // Startup of threadpool operating on 's-port'
         auto replicationQueue = std::make_shared<ConnectionQueue>();
-        InConnection replicationConnection(replicationQueue, true);
         ThreadPool replicationAgents(1);
         replicationAgents.operate(replicationQueue);
-        replicationConnection.operate(Config::singleton().get_sport());
-
-        // TODO Serialize the startup of threadpools and server sockets
-        usleep(3000000);
+        replicationConnection.operate(Config::singleton().get_sport(),
+                replicationQueue, true);
 
         // Startup of threadpool operating on 'b-port'
         auto connectionQueue = std::make_shared<ConnectionQueue>();
-        InConnection inConnection(connectionQueue);
         ThreadPool agents(Config::singleton().get_Tmax());
         agents.operate(connectionQueue);
-        inConnection.operate(Config::singleton().get_bport());
+        inConnection.operate(Config::singleton().get_bport(), connectionQueue,
+                false);
 
     }
     catch (const BBServException& error)

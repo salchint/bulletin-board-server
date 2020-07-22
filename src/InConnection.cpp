@@ -41,20 +41,18 @@ static void* thread_main(void* p)
     return nullptr;
 }
 
-InConnection::InConnection(std::shared_ptr<ConnectionQueue>& qu, bool isNonblocking)
-{
-    this->connectionQueue = qu;
-    this->isNonblocking = isNonblocking;
-}
-
 void InConnection::listen_on(/*const std::string_view& ipaddress,*/ in_port_t port)
 {
     open_incoming_conn(/*ipaddress,*/ port);
     listen_for_clients();
 }
 
-void InConnection::operate(/*const std::string_view& ipaddress,*/ in_port_t port)
+void InConnection::operate(/*const std::string_view& ipaddress,*/ in_port_t port,
+        std::shared_ptr<ConnectionQueue>& qu, bool isNonblocking)
 {
+    this->connectionQueue = qu;
+    this->isNonblocking = isNonblocking;
+
     pthread_t context;
     pthread_attr_t contextOptions;
     pthread_attr_init(&contextOptions);
@@ -81,13 +79,8 @@ void InConnection::open_incoming_conn(/*const std::string_view& ipaddress,*/ in_
 {
     using std::string_view;
 
-    int enable = 1;
-    //sockaddr_in acceptAddress;
-    //socklen_t addressSize = sizeof(sockaddr_in);
-
     addrinfo hints, *result;
 
-    //memset(&acceptAddress, 0, addressSize);
     memset(&hints, 0, sizeof(hints));
     hints.ai_family = AF_INET;
     hints.ai_socktype = SOCK_STREAM;
@@ -101,37 +94,40 @@ void InConnection::open_incoming_conn(/*const std::string_view& ipaddress,*/ in_
                 gai_strerror(status));
     }
 
-    //resources.set_accept_socket ( socket(AF_INET, SOCK_STREAM, 0) );
-    resources.set_accept_socket (socket(result->ai_family,
-                result->ai_socktype, result->ai_protocol));
-
-    if (0 > resources.get_accept_socket())
+    for (auto* it{result}; it != nullptr; it = it->ai_next)
     {
-        error_return(this, "Failed to connect to socket for incoming connections.");
-    }
-    setsockopt(resources.get_accept_socket(), SOL_SOCKET, SO_REUSEADDR, (void*)&enable,
-            sizeof(enable));
+        try
+        {
+            resources = std::make_unique<SocketResource> (it->ai_family, it->ai_socktype,
+                        it->ai_protocol);
+        }
+        catch (const BBServException& error)
+        {
+            std::cout << error.what() << std::endl;
+            continue;
+        }
 
-    if (this->is_nonblocking())
-    {
-        fcntl(resources.get_accept_socket(), F_SETFL, O_NONBLOCK);
-    }
+        if (this->is_nonblocking())
+        {
+            fcntl(resources->get_accept_socket(), F_SETFL, O_NONBLOCK);
+        }
 
-    //acceptAddress.sin_port = htons(port);
-    //acceptAddress.sin_family = AF_INET;
-    //acceptAddress.sin_addr.s_addr = INADDR_ANY;
-    //if (0 != bind(resources.get_accept_socket(), (struct sockaddr*)(&acceptAddress),
-            //addressSize))
-    if (0 != bind(resources.get_accept_socket(), result->ai_addr,
-                result->ai_addrlen))
-    {
-        error_return(this, "Failed to bind socket to 0.0.0.0:", port);
-    }
+        if (0 != bind(resources->get_accept_socket(), it->ai_addr,
+                    it->ai_addrlen))
+        {
+            debug_print(this, "Failed to bind socket to ",
+                    inet_ntoa(((sockaddr_in*)result->ai_addr)->sin_addr), ":",
+                    port, " - ", strerror(errno));
+            continue;
+        }
 
-    //debug_print(this, "Created socket ", resources.get_accept_socket(),
-            //" and bound it to ", inet_ntoa(acceptAddress.sin_addr), ":", port);
-    debug_print(this, "Created socket ", resources.get_accept_socket(),
-            " and bound it to ", inet_ntoa(((sockaddr_in*)result->ai_addr)->sin_addr), ":", port);
+        // All went well with this it's address, so let's take it
+        debug_print(this, "Created socket ", resources->get_accept_socket(),
+                " and bound it to ",
+                inet_ntoa(((sockaddr_in*)result->ai_addr)->sin_addr), ":",
+                port);
+        break;
+    }
 
     freeaddrinfo(result);
 }
@@ -146,7 +142,7 @@ void InConnection::listen_for_clients()
 {
     auto clientSocket {0};
 
-    listen(resources.get_accept_socket(), Config::singleton().get_Tmax());
+    listen(resources->get_accept_socket(), Config::singleton().get_Tmax());
     debug_print(this, "Listening for incoming messages");
 
     while (1)
@@ -156,11 +152,11 @@ void InConnection::listen_for_clients()
         if (this->is_nonblocking())
         {
             pollfd descriptor;
-            descriptor.fd = resources.get_accept_socket();
+            descriptor.fd = resources->get_accept_socket();
             descriptor.events = POLLIN;
 
             debug_print(this, "Waiting for data to arrive on socket ",
-                    resources.get_accept_socket());
+                    resources->get_accept_socket());
 
             auto ready { poll(&descriptor, 1,
                     Config::singleton().get_network_timeout_ms()) };
@@ -176,16 +172,16 @@ void InConnection::listen_for_clients()
             else if (-1 == ready)
             {
                 // error
-                error_return(this, "Failed to poll socket ", resources.get_accept_socket());
+                error_return(this, "Failed to poll socket ", resources->get_accept_socket());
             }
         }
 
-        debug_print(this, "Accepting connection on socket ", resources.get_accept_socket());
-        clientSocket = accept(resources.get_accept_socket(), NULL, NULL);
+        debug_print(this, "Accepting connection on socket ", resources->get_accept_socket());
+        clientSocket = accept(resources->get_accept_socket(), NULL, NULL);
         if (-1 == clientSocket)
         {
             debug_print(this, "Failed to accept connection on socket ",
-                    resources.get_accept_socket(), ": ", strerror(errno));
+                    resources->get_accept_socket(), ": ", strerror(errno));
             break;
         }
 
@@ -199,7 +195,7 @@ void InConnection::listen_for_clients()
         //}
     }
 
-    debug_print(this, "Stop listening on socket ", resources.get_accept_socket());
+    debug_print(this, "Stop listening on socket ", resources->get_accept_socket());
     //close(this->acceptSocket);
     //this->acceptSocket = 0;
 }

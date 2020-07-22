@@ -14,56 +14,67 @@
 /**
  *RAII wrapper for the socket.
  */
-class ConnectionResources
+class SocketResource
 {
-    int acceptSocket {0};
+    private:
+        int acceptSocket {0};
 
     public:
-    ConnectionResources()
-        : acceptSocket(0)
-    { }
-
-    ~ConnectionResources()
-    {
-        if (0 < this->acceptSocket)
+        SocketResource(int domain, int type, int protocol)
         {
-            debug_print(this, "Close connection at socket ",
-                    this->acceptSocket);
-            close(this->acceptSocket);
-            this->acceptSocket = 0;
+            this->acceptSocket = socket(domain, type, protocol);
+            //debug_print(this, "!!! Set socket ", this->acceptSocket, " @", this);
+
+            if (-1 == this->acceptSocket)
+            {
+                error_return(this, "Failed to connect to socket for incoming connections: ",
+                        strerror(errno));
+            }
+
+            auto enable {1};
+            setsockopt(this->get_accept_socket(), SOL_SOCKET, SO_REUSEADDR,
+                    (void*)&enable, sizeof(enable));
         }
-    }
 
-    ConnectionResources(const ConnectionResources& other)
-        : acceptSocket(other.acceptSocket)
-    { }
+        SocketResource()
+            : acceptSocket(0)
+        { }
 
-    ConnectionResources(ConnectionResources&& other) noexcept
-        : acceptSocket(std::exchange(other.acceptSocket, 0))
-    { }
+        ~SocketResource()
+        {
+            if (0 < this->acceptSocket)
+            {
+                debug_print(this, "Close connection at socket ",
+                        this->acceptSocket, " @", this);
+                close(this->acceptSocket);
+                this->acceptSocket = 0;
+            }
+        }
 
-    ConnectionResources& operator=(const ConnectionResources& other)
-    {
-        return *this = ConnectionResources(other);
-    }
+        SocketResource(const SocketResource& other)
+            : acceptSocket(other.acceptSocket)
+        { }
 
-    ConnectionResources& operator=(ConnectionResources&& other) noexcept
-    {
-        std::swap(this->acceptSocket, other.acceptSocket);
-        return *this;
-    }
+        SocketResource(SocketResource&& other) noexcept
+            : acceptSocket(std::exchange(other.acceptSocket, 0))
+            { }
+
+        SocketResource& operator=(const SocketResource& other)
+        {
+            return *this = SocketResource(other);
+        }
+
+        SocketResource& operator=(SocketResource&& other) noexcept
+        {
+            std::swap(this->acceptSocket, other.acceptSocket);
+            return *this;
+        }
 
     public:
-    void set_accept_socket(int acceptSocket)
-    {
-        debug_print(this, "!!! Set socket ", acceptSocket);
-        this->acceptSocket = acceptSocket;
-    }
-
-    int get_accept_socket()
-    {
-        return this->acceptSocket;
-    }
+        int get_accept_socket()
+        {
+            return this->acceptSocket;
+        }
 
 };
 
@@ -73,12 +84,9 @@ class ConnectionResources
 class InConnection
 {
     protected:
-        ConnectionResources resources;
+        std::unique_ptr<SocketResource> resources;
         std::shared_ptr<ConnectionQueue> connectionQueue;
         bool isNonblocking {false};
-
-    public:
-        InConnection(std::shared_ptr<ConnectionQueue>& qu, bool isNonblocking = false);
 
     public:
         /**
@@ -93,7 +101,8 @@ class InConnection
          *
          * Upon error might throw BBServException.
          */
-        void operate(/*const std::string_view& ipaddress,*/ in_port_t port);
+        void operate(/*const std::string_view& ipaddress,*/ in_port_t port,
+                std::shared_ptr<ConnectionQueue>& qu, bool isNonblocking = false);
 
     protected:
         void open_incoming_conn(/*const std::string_view& ipaddress,*/ in_port_t port);
