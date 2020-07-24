@@ -1,4 +1,4 @@
-//Filename:  CmdSuccessful.h
+//Filename:  BroadcastCommit.h
 
 #pragma once
 
@@ -8,10 +8,10 @@
 /**
  *Command supporting the USER message.
  */
-class CmdSuccessful
+class BroadcastCommit
 {
     protected:
-        constexpr static const char* const  COMMAND_ID { "SUCCESSFUL" };
+        constexpr static const char* const  COMMAND_ID { "COMMIT" };
         std::string commandId;
         FILE* stream {nullptr};
         const char* line {nullptr};
@@ -20,7 +20,7 @@ class CmdSuccessful
         /**
          *Custom constructor accepting the command line received on the socket.
          */
-        CmdSuccessful(const std::string& commandId, FILE* stream, const char* line)
+        BroadcastCommit(const std::string& commandId, FILE* stream, const char* line)
             : commandId(commandId)
             , stream(stream)
             , line(line)

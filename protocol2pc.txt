@@ -86,7 +86,9 @@ Receiver:: Participant
 
 Trigger:: All Participants have positively acknowledged PRECOMMIT.
 
-Payload:: A copy of the WRITE or REPLACE command.
+Payload:: A copy of the WRITE or REPLACE command prefixed by the user name of
+the original command and the server-generated identifier of the WRITE/REPLACE
+command, which is to be done.
 
 Reply:: SUCCESSFULL or UNSUCCESSFULL command let the Coordinator know the
 result of requested operation.
@@ -110,6 +112,9 @@ Trigger::
  * Participant has processed the WRITE or REPLACE command successfully.
  * Coordinator has received SUCCESSFULL commands from all Participants.
 
+Payload:: The server-generated identifier of the WRITE/REPLACE command, which
+had to be done.
+
 UNSUCCESSFULL
 ~~~~~~~~~~~~~
 
@@ -119,6 +124,9 @@ Trigger::
  * Participant failed to process the WRITE or REPLACE command.
  * Coordinator has received one or more UNSUCCESSFULL commands from
    Participants or awaiting a Participant's reply timed out.
+
+Payload:: The server-generated identifier of the WRITE/REPLACE command, which
+had to be done.
 
 ABORT
 ~~~~~
@@ -142,3 +150,11 @@ In addition, the initiating Command Object provides an instance of Acknowledge
 Queue, which is used to collect all the replies from the peers. The initiating
 Command Object uses it to determine if it can process further or needs to
 abort/undo the current command.
+
+Data consistency
+~~~~~~~~~~~~~~~~
+
+In order to check for data consistency during all the stages in the two-phase
+commit protocol, the message identifier is passed along with the PRECOMMIT and
+COMMIT commands. This way we can detect intercepting WRITE operations, which
+have a different origin than the currently ongoing data replication.

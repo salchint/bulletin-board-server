@@ -45,6 +45,11 @@ void CmdCommit::execute()
             error_return(this, "Invalid COMMIT command");
         }
 
+        std::istringstream sin2 (localLine);
+        sin2 >> localCommandId;
+        debug_print(this, "Local command: ", std::quoted(localCommandId), " ",
+                localLine);
+
         SessionResources localResources;
         localResources.get_stream() = pipeStream.get_pipeStreams()[WRITE_END];
         localResources.get_user() = localUser;

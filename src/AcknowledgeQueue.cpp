@@ -33,7 +33,7 @@ AcknowledgeQueue* AcknowledgeQueue::TheOne(size_t messageId, bool erase)
 void AcknowledgeQueue::add(bool success) noexcept
 {
     AutoLock guard(&queueMutex);
-    debug_print(this, "Acknowledge positive=", success);
+    //debug_print(this, "Acknowledge positive=", success);
 
     this->ackQueue.emplace_back(success);
 

@@ -12,7 +12,7 @@ void BroadcastPrecommit::execute()
         return;
     }
 
-    debug_print(this, "Broadcasting ", COMMAND_ID, " command\n");
+    debug_print(this, "Broadcasting ", COMMAND_ID, " command");
 
     //debug_print(this, "Broadcasting ", COMMAND_ID, " via socket ", fileno(this->stream));
     fprintf(this->stream, "%s\n", this->line + std::strlen("BROADCAST-"));

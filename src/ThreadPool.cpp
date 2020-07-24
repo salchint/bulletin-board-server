@@ -152,7 +152,7 @@ static void wait_for_data(ThreadPool* pool, int peerSocket, BroadcastCommand& co
         // error
         error_return("Failed to poll for incoming data at socket ", peerSocket);
     }
-    debug_print(pool, "Data available on socket ", peerSocket);
+    //debug_print(pool, "Data available on socket ", peerSocket);
 }
 
 /**
@@ -176,7 +176,7 @@ static void* process(ThreadPool* pool, SessionResources& resources, BroadcastCom
         open_socket_stream(peerSocket, resources.get_stream());
 
         // In non-blocking mode, first check if there are data to be received.
-        debug_print(pool, "Try to read data from ", peerSocket);
+        //debug_print(pool, "Try to read data from ", peerSocket);
         wait_for_data(pool, peerSocket, command);
 
         read = fgets(line.data(), line.size(), resources.get_stream());
@@ -205,7 +205,7 @@ static void* process(ThreadPool* pool, SessionResources& resources, BroadcastCom
     }
     catch (const std::bad_optional_access&)
     {
-        std::cout << "ERROR - Failed to build command object from unknown '"
+        std::cout << "ERROR - Failed to build broadcast command object from unknown '"
             << command.command.data() <<"'" << std::endl;
     }
     catch (const BBServTimeout& timeout)
@@ -309,7 +309,7 @@ static void* thread_main(void* p)
     {
         SessionResources resources;
         auto entry { pool->get_entry() };
-        debug_print(pool, "Got connection queue entry");
+        //debug_print(pool, "Got connection queue entry");
 
         try
         {

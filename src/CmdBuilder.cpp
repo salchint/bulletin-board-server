@@ -1,6 +1,9 @@
 //Filename:  CmdBuilder.cpp
 
 #include <iomanip>
+#include <unistd.h>
+#include <errno.h>
+#include <cstring>
 #include "CmdBuilder.h"
 #include "CmdUser.h"
 #include "CmdWrite.h"
@@ -32,7 +35,7 @@
  */
 std::optional<ThreadPool::Commands_t> build_command(const std::string commandId, const char* line, SessionResources& resources, ConnectionQueue* qu)
 {
-    debug_print(line, std::quoted(commandId));
+    debug_print(line, std::quoted(commandId), " ", line);
 
     if (commandId == "USER")
     {
@@ -66,9 +69,17 @@ std::optional<ThreadPool::Commands_t> build_command(const std::string commandId,
     {
         return CmdAcknowledge(commandId, resources.get_stream(), line);
     }
+    else if (commandId == "SUCCESSFUL")
+    {
+        return CmdSuccessful(commandId, resources.get_stream(), line);
+    }
     else if (commandId == "BROADCAST-PRECOMMIT")
     {
         return BroadcastPrecommit("PRECOMMIT", resources.get_stream(), line);
+    }
+    else if (commandId == "BROADCAST-COMMIT")
+    {
+        return BroadcastCommit("COMMIT", resources.get_stream(), line);
     }
     return {};
 }

@@ -15,10 +15,11 @@ void CmdPrecommit::execute()
 
     auto messageId {0};
     std::string dummy;
+    std::string userName;
     std::istringstream sin(this->line);
     dummy.resize(100);
 
-    sin >> dummy >> messageId;
+    sin >> dummy >> userName >> messageId;
 
     if (sin.fail())
     {

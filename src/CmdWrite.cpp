@@ -5,6 +5,7 @@
 #include <string>
 #include <string_view>
 #include <fstream>
+#include <algorithm>
 #include "ConnectionQueue.h"
 
 size_t CmdWrite::update_message_number()
@@ -40,7 +41,7 @@ size_t CmdWrite::update_message_number()
     return number;
 }
 
-void CmdWrite::broadcast_synchronous(std::string commandId, size_t messageId)
+void CmdWrite::broadcast_synchronous(std::string commandId, std::string userName, size_t messageId, std::string arguments)
 {
     BroadcastCommand broadcast;
 
@@ -48,8 +49,11 @@ void CmdWrite::broadcast_synchronous(std::string commandId, size_t messageId)
     {
         debug_print(this, "Add ", commandId, "/peer to connectionQueue: ", peer);
         broadcast.peer = peer;
-        broadcast.command = "BROADCAST-PRECOMMIT ";
-        broadcast.command += std::to_string(messageId);
+        broadcast.command = "BROADCAST-";
+        broadcast.command += commandId;
+        broadcast.command += " " + userName;
+        broadcast.command += " " + std::to_string(messageId);
+        broadcast.command += " " + arguments;
         this->connectionQueue->add(broadcast);
     }
 
@@ -59,13 +63,15 @@ void CmdWrite::broadcast_synchronous(std::string commandId, size_t messageId)
         error_return(this, "Did not get positive acknowledge from all peers");
     }
     debug_print(this, "All peers acknowledged");
+    // Delete this AcknowledgeQueue
     AcknowledgeQueue::TheOne(messageId, true);
 }
 
-bool CmdWrite::replicate_command(size_t messageId)
+bool CmdWrite::replicate_command(std::string userName, size_t messageId)
 {
-    broadcast_synchronous("PRECOMMIT", messageId);
-    broadcast_synchronous("COMMIT", messageId);
+    broadcast_synchronous("PRECOMMIT", userName, messageId, "");
+    broadcast_synchronous("COMMIT", userName, messageId, commandId + " LOCAL" +
+            (this->line + commandId.size()));
 
     return true;
 }
@@ -82,9 +88,19 @@ void CmdWrite::execute()
         return;
     }
 
-    debug_print(this, "Processing ", COMMAND_ID, " command\n");
+    debug_print(this, "Processing ", COMMAND_ID, " command");
 
     std::string message { this->line + std::strlen(COMMAND_ID) + 1 };
+
+    // Ignore some leading spaces
+    auto localWriteOnly { 3 > message.find("LOCAL ") };
+    if (localWriteOnly)
+    {
+        // Eleminate the prefix
+        auto diff { std::strlen("LOCAL ") };
+        message.replace(message.begin(), message.end() - diff, message.begin() + diff, message.end());
+        message.replace(message.end() - diff, message.end(), diff, '\0');
+    }
 
     try
     {
@@ -105,12 +121,13 @@ void CmdWrite::execute()
         if (fout.fail())
         {
             error_return(this, "Failed to open/create file ",
-                    Config::singleton().get_bbfile()); }
+                    Config::singleton().get_bbfile());
+        }
 
-        if (this->connectionQueue)
+        if (this->connectionQueue && !localWriteOnly)
         {
             // Have all the peers process this command as well
-            if (!replicate_command(id))
+            if (!replicate_command(this->user, id))
             {
                 // TODO undo
             }
@@ -120,6 +137,11 @@ void CmdWrite::execute()
         fout.seekp(0, std::ios_base::end);
         debug_print(this, "file pos ", fout.tellp());
         fout << id << "/" << this->user << "/" << message;
+
+        if (*(message.end() - 1) != '\n')
+        {
+            fout << std::endl;
+        }
 
         fprintf(this->stream, "3.0 WROTE %lu\n", id);
         fflush(this->stream);

@@ -47,11 +47,11 @@ class CmdWrite
         /**
          *Broadcast this WRITE command to known peers.
          */
-        bool replicate_command(size_t messageId);
+        bool replicate_command(std::string userName, size_t messageId);
 
         /**
          *Broadcast one command and wait for the acknowledge.
          */
-        void broadcast_synchronous(std::string commandId, size_t messageId);
+        void broadcast_synchronous(std::string commandId, std::string userName, size_t messageId, std::string arguments);
 };
 
