@@ -22,7 +22,7 @@ void BroadcastCommit::execute()
     fprintf(this->stream, "%s\n", this->line + std::strlen("BROADCAST-"));
 
     std::fgets(localLine.data(), localLine.size(), this->stream);
-    debug_print(this, "Processing reply: ", localLine.data());
+    debug_print(this, "Processing reply: ", localLine.data(), " received via ", fileno(this->stream));
 
     // SUCCESSFUL or UNSUCCESSFUL
     std::istringstream sin(localLine.data());
@@ -40,4 +40,5 @@ void BroadcastCommit::execute()
     auto command { build_command(commandId.data(), localLine.data(), localResources).value() };
     std::visit([](auto&& command) { command.execute(); }, command);
 
+    localResources.detach_stream();
 }

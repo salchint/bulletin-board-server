@@ -158,8 +158,10 @@ static void wait_for_data(ThreadPool* pool, int peerSocket, BroadcastCommand& co
 /**
  *Process request to send the given command to the given peer.
  */
-static void* process(ThreadPool* pool, SessionResources& resources, BroadcastCommand command)
+static void* process(ThreadPool* pool, BroadcastCommand command)
 {
+    SessionResources resources;
+
     std::array<char, 1024> line;
     std::array<char, 100> commandId;
     //std::string commandId;
@@ -231,8 +233,10 @@ static void* process(ThreadPool* pool, SessionResources& resources, BroadcastCom
 /**
  *Process request to handle incoming client connections.
  */
-static void* process(ThreadPool* pool, SessionResources& resources, int clientSocket)
+static void* process(ThreadPool* pool, int clientSocket)
 {
+    SessionResources resources;
+
     std::array<char, 100> commandId;
     std::array<char, 1024> line;
 
@@ -307,15 +311,14 @@ static void* thread_main(void* p)
 
     for (;;)
     {
-        SessionResources resources;
         auto entry { pool->get_entry() };
         //debug_print(pool, "Got connection queue entry");
 
         try
         {
             std::visit(Overload {
-                    [&](int socket) { process(pool, resources, socket); },
-                    [&](BroadcastCommand cmd) { process(pool, resources, cmd); },
+                    [&](int socket) { process(pool, socket); },
+                    [&](BroadcastCommand cmd) { process(pool, cmd); },
                     }, entry);
         }
         catch (const BBServException& error)

@@ -33,6 +33,8 @@ class SessionResources
         {
             if (this->stream)
             {
+                debug_print(this, "Closing stream from ", fileno(this->stream), " @", this);
+
                 fclose(this->stream);
                 this->stream = nullptr;
                 this->clientSocket = 0;
@@ -98,6 +100,10 @@ class SessionResources
          *Get the reference to the stream attached to the client socket.
          */
         FILE*& get_stream() { return this->stream; }
+        /**
+         *Revoke ownership of the encapsulated file stream.
+         */
+        void detach_stream() { this->stream = nullptr; this->clientSocket = 0; }
         /**
          *Get the AcknowledgeQueue instance.
          */

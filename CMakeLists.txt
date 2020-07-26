@@ -53,17 +53,17 @@ add_test(
     COMMAND Tests-Bulletin Board Server
 )
 
-# Coverage
-if(CMAKE_BUILD_TYPE STREQUAL "Debug")
-    include(CodeCoverage)
-    set(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} -g -O0 -fprofile-arcs -ftest-coverage")
-    set(CMAKE_C_FLAGS "${CMAKE_C_FLAGS} -g -O0 -fprofile-arcs -ftest-coverage")
-    SETUP_TARGET_FOR_COVERAGE(
-        test-coverage
-        Tests-Bulletin Board Server
-        coverage
-    )
-endif()
+## Coverage
+#if(CMAKE_BUILD_TYPE STREQUAL "Debug")
+    #include(CodeCoverage)
+    #set(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} -g -O0 -fprofile-arcs -ftest-coverage")
+    #set(CMAKE_C_FLAGS "${CMAKE_C_FLAGS} -g -O0 -fprofile-arcs -ftest-coverage")
+    #SETUP_TARGET_FOR_COVERAGE(
+        #test-coverage
+        #Tests-Bulletin Board Server
+        #coverage
+    #)
+#endif()
 
 
 

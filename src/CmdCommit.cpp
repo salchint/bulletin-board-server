@@ -59,6 +59,8 @@ void CmdCommit::execute()
 
         fprintf(this->stream, "SUCCESSFUL\n");
         fflush(this->stream);
+        localResources.detach_stream();
+        debug_print(this, "Reply SUCCESSFUL via ", fileno(this->stream));
     }
     catch (const BBServException& error)
     {
