@@ -162,7 +162,7 @@ static void* process(ThreadPool* pool, BroadcastCommand command)
             error_return(pool, "Failed to read from socket ", peerSocket,
                     strerror(errno));
         }
-        debug_print(pool, "Received on ", peerSocket, ": ", line.data());
+        debug_print(pool, "Received on peer ", peerSocket, ": ", line.data());
 
         // Consume and ignore the welcome/goodbye message from the peer
         if (0 == strncmp("0.0", line.data(), 3)
@@ -216,6 +216,8 @@ static void* process(ThreadPool* pool, int clientSocket)
     std::array<char, 1024> line;
 
     resources.get_clientSocket() = clientSocket;
+    memset(line.data(), 0, line.size());
+    memset(commandId.data(), 0, commandId.size());
 
     try
     {
@@ -233,14 +235,18 @@ static void* process(ThreadPool* pool, int clientSocket)
 
     while (fgets(line.data(), line.size(), resources.get_stream()))
     {
-        debug_print(pool, "Received on ", resources.get_clientSocket(), ": ", line.data());
+        debug_print(pool, "Received on client ", resources.get_clientSocket(), ": ", line.data());
 
-        sscanf(line.data(), "%s ", commandId.data());
+        if (1 != sscanf(line.data(), "%s ", commandId.data()))
+        {
+            debug_print(pool, "No command ID received");
+            break;
+        }
 
         try
         {
             // Consume and ignore the goodbye message
-            if (0== strncmp("4.0 BYE", line.data(), 7))
+            if (0 == strncmp("4.0 BYE", line.data(), 7))
             {
                 break;
             }
@@ -254,6 +260,8 @@ static void* process(ThreadPool* pool, int clientSocket)
                 break;
             }
 
+            memset(line.data(), 0, line.size());
+            memset(commandId.data(), 0, commandId.size());
         }
         catch (const std::bad_optional_access&)
         {

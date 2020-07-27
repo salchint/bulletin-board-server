@@ -10,18 +10,20 @@ void CmdSuccessful::execute()
         return;
     }
 
-    debug_print(this, "Processing ", COMMAND_ID, " command\n");
+    debug_print(this, "Processing ", COMMAND_ID, " command");
+    //debug_print(this, "Line: ", this->line);
 
     auto messageId {0};
-    std::array<char, 1024> localLine;
-    std::array<char, 100> localCommandId;
+    std::string localCommandId;
+
+    localCommandId.resize(100);
 
     try
     {
-        std::fgets(localLine.data(), localLine.size(), this->stream);
-        std::istringstream sin(localLine.data());
+        std::istringstream sin(this->line);
 
-        sin >> localCommandId.data() >> messageId;
+        sin >> localCommandId >> messageId;
+        debug_print(this, "[", localCommandId, "] ", "[", messageId, "]");
 
         if (sin.fail())
         {
