@@ -2,6 +2,7 @@
 
 #include "CmdWrite.h"
 #include <cstring>
+#include <iomanip>
 #include <string>
 #include <string_view>
 #include <fstream>
@@ -96,9 +97,10 @@ void CmdWrite::execute()
     auto localWriteOnly { 3 > message.find("LOCAL ") };
     if (localWriteOnly)
     {
-        // Eleminate the prefix
+        // Eliminate the prefix
         auto diff { std::strlen("LOCAL ") };
-        message.replace(message.begin(), message.end() - diff, message.begin() + diff, message.end());
+        message.replace(message.begin(), message.end() - diff, message.begin()
+                + diff, message.end());
         message.replace(message.end() - diff, message.end(), diff, '\0');
     }
 
@@ -138,7 +140,7 @@ void CmdWrite::execute()
         debug_print(this, "file pos ", fout.tellp());
         fout << id << "/" << this->user << "/" << message;
 
-        if (*(message.end() - 1) != '\n')
+        if (localWriteOnly)
         {
             fout << std::endl;
         }

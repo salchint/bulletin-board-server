@@ -131,31 +131,6 @@ int create_peer_socket(ThreadPool* pool, Peer& peer)
 }
 
 /**
- *Wait on the given peer socket for some data to arrive.
- */
-static void wait_for_data(ThreadPool* pool, int peerSocket, BroadcastCommand& command)
-{
-    pollfd descriptor;
-    descriptor.fd = peerSocket;
-    descriptor.events = POLLIN;
-
-    auto ready { poll(&descriptor, 1, Config::singleton().get_network_timeout_ms()) };
-
-    if (0 == ready)
-    {
-        // timeout
-        debug_print(pool, "Timeout occurred");
-        timeout_return(pool, "Peer ", command.peer, " did not respond in time");
-    }
-    else if (-1 == ready)
-    {
-        // error
-        error_return("Failed to poll for incoming data at socket ", peerSocket);
-    }
-    //debug_print(pool, "Data available on socket ", peerSocket);
-}
-
-/**
  *Process request to send the given command to the given peer.
  */
 static void* process(ThreadPool* pool, BroadcastCommand command)
@@ -179,7 +154,7 @@ static void* process(ThreadPool* pool, BroadcastCommand command)
 
         // In non-blocking mode, first check if there are data to be received.
         //debug_print(pool, "Try to read data from ", peerSocket);
-        wait_for_data(pool, peerSocket, command);
+        wait_for(peerSocket);
 
         read = fgets(line.data(), line.size(), resources.get_stream());
         if (!read)

@@ -7,6 +7,7 @@
 #include <errno.h>
 #include <sstream>
 #include <cstdio>
+#include <sys/socket.h>
 #include "CmdBuilder.h"
 
 void CmdCommit::execute()
@@ -56,15 +57,34 @@ void CmdCommit::execute()
 
         auto command { build_command(localCommandId, localLine.data(), localResources).value() };
         std::visit([](auto&& cmd) { cmd.execute(); }, command);
-
-        fprintf(this->stream, "SUCCESSFUL\n");
-        fflush(this->stream);
         localResources.detach_stream();
+
+        fgets(localLine.data(), localLine.size(), pipeStream.get_pipeStreams()[READ_END]);
+        if (0 != std::strncmp("3.0 WROTE", localLine.data(), 9))
+        {
+            error_return(this, "Local Write operation failed: ",
+                    localLine.data());
+        }
+
+        std::string text = std::string("SUCCESSFUL ") + std::to_string(messageId);
+        auto sent { send(fileno(this->stream), text.data(), text.size(), 0) };
+        if (-1 == sent)
+        {
+            error_return(this, "Failed to send success reply on ", fileno(this->stream));
+        }
+        else if (12 > sent)
+        {
+            error_return(this, "Failed to send all bytes of the success reply ", sent, " on ", fileno(this->stream));
+        }
+
+        //fprintf(this->stream, "SUCCESSFUL %d\n", messageId);
+        //fflush(this->stream);
         debug_print(this, "Reply SUCCESSFUL via ", fileno(this->stream));
     }
     catch (const BBServException& error)
     {
-        fprintf(this->stream, "UNSUCCESSFUL\n");
+        std::cout << error.what() << std::endl;
+        fprintf(this->stream, "UNSUCCESSFUL %d\n", messageId);
         fflush(this->stream);
     }
 

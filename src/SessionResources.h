@@ -5,7 +5,10 @@
 #include <string>
 #include <memory>
 #include <cstdio>
+#include <cstring>
 #include <utility>
+#include <poll.h>
+#include <errno.h>
 #include "Config.h"
 #include "BBServException.h"
 #include "AcknowledgeQueue.h"
@@ -114,3 +117,29 @@ class SessionResources
         //void set_ack_queue(AcknowledgeQueue* p) { this->ackQueue.reset(p); }
 
 };
+
+/**
+ *Poll on the socket.
+ */
+inline void wait_for(int peerSocket)
+{
+    pollfd descriptor;
+    descriptor.fd = peerSocket;
+    descriptor.events = POLLIN;
+
+    auto ready { poll(&descriptor, 1, Config::singleton().get_network_timeout_ms()) };
+
+    if (0 == ready)
+    {
+        // timeout
+        timeout_return(peerSocket, "Timeout occurred on ", peerSocket);
+    }
+    else if (-1 == ready)
+    {
+        // error
+        error_return(peerSocket, "Failed to poll connection on ", peerSocket, "; ",
+                strerror(errno));
+    }
+
+}
+
