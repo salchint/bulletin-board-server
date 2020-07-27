@@ -124,10 +124,11 @@ TEST_F(ReplicationSuite, testWriteFile)
     // TODO
     usleep(2000000);
     // Verify the file content of the sibling
-    std::ifstream input("db.10002.txt");
-    EXPECT_TRUE(input.good()) << "Failed to open " << "db.10002.txt";
+    std::ifstream input("db.10200.txt");
+    EXPECT_TRUE(input.good()) << "Failed to open " << "db.10200.txt";
+    memset(buffer.data(), 0, buffer.size());
     input.get(buffer.data(), buffer.size(), EOF);
-    EXPECT_STREQ(buffer.data(), "0/nobody/The first line\n") << "db.10002.txt" << " does not contain the desired line";
+    EXPECT_STREQ(buffer.data(), "0/nobody/The first line\n") << "db.10200.txt" << " does not contain the desired line";
 }
 
 //TEST_F(ReplicationSuite, testWriteFile_multiple)

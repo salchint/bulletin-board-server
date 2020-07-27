@@ -137,8 +137,8 @@ void CmdWrite::execute()
 
         // Finally, the local write operation
         fout.seekp(0, std::ios_base::end);
-        debug_print(this, "file pos ", fout.tellp());
-        fout << id << "/" << this->user << "/" << message;
+        debug_print(this, "File pos ", fout.tellp());
+        fout << id << "/" << this->user << "/" << message.data();
 
         if (localWriteOnly)
         {
