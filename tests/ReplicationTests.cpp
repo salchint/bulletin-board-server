@@ -131,33 +131,33 @@ TEST_F(ReplicationSuite, testWriteFile)
     EXPECT_STREQ(buffer.data(), "0/nobody/The first line\n") << "db.10200.txt" << " does not contain the desired line";
 }
 
-//TEST_F(ReplicationSuite, testWriteFile_multiple)
-//{
-    //std::array<char, 1024> buffer;
-    //// Receive greetings
-    //fgets(buffer.data(), buffer.size(), this->stream);
-    //// Send WRITE request
-    //fputs("WRITE A\n", this->stream);
-    //// Receive acknowledge
-    //fgets(buffer.data(), buffer.size(), this->stream);
-    //// Send WRITE request
-    //fputs("WRITE B\n", this->stream);
-    //// Receive acknowledge
-    //fgets(buffer.data(), buffer.size(), this->stream);
-    //// Change user name
-    //fputs("USER Mike\n", this->stream);
-    //// Receive acknowledge
-    //fgets(buffer.data(), buffer.size(), this->stream);
-    //// Send WRITE request
-    //fputs("WRITE C\n", this->stream);
-    //// Receive acknowledge
-    //fgets(buffer.data(), buffer.size(), this->stream);
-    //// Verify the file content
-    //std::ifstream input(DEFAULT_BBFILE);
-    //EXPECT_TRUE(input.good()) << "Failed to open " << DEFAULT_BBFILE;
-    //input.get(buffer.data(), buffer.size(), EOF);
-    //EXPECT_STREQ(buffer.data(), "0/nobody/A\n1/nobody/B\n2/Mike/C\n") << DEFAULT_BBFILE << " does not contain the desired lines";
-//}
+TEST_F(ReplicationSuite, testWriteFile_multipleUser)
+{
+    std::array<char, 1024> buffer;
+    // Receive greetings
+    fgets(buffer.data(), buffer.size(), this->stream);
+    // Send WRITE request
+    fputs("WRITE A\n", this->stream);
+    // Receive acknowledge
+    fgets(buffer.data(), buffer.size(), this->stream);
+    // Send WRITE request
+    fputs("WRITE B\n", this->stream);
+    // Receive acknowledge
+    fgets(buffer.data(), buffer.size(), this->stream);
+    // Change user name
+    fputs("USER Mike\n", this->stream);
+    // Receive acknowledge
+    fgets(buffer.data(), buffer.size(), this->stream);
+    // Send WRITE request
+    fputs("WRITE C\n", this->stream);
+    // Receive acknowledge
+    fgets(buffer.data(), buffer.size(), this->stream);
+    // Verify the file content
+    std::ifstream input("db.10200.txt");
+    EXPECT_TRUE(input.good()) << "Failed to open " << "db.10200.txt";
+    input.get(buffer.data(), buffer.size(), EOF);
+    EXPECT_STREQ(buffer.data(), "0/nobody/A\n1/nobody/B\n2/Mike/C\n") << "db.10200.txt" << " does not contain the desired lines";
+}
 
 //TEST_F(ReplicationSuite, testRead)
 //{
