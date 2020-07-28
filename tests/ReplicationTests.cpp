@@ -159,139 +159,88 @@ TEST_F(ReplicationSuite, testWriteFile_multipleUser)
     EXPECT_STREQ(buffer.data(), "0/nobody/A\n1/nobody/B\n2/Mike/C\n") << "db.10200.txt" << " does not contain the desired lines";
 }
 
-//TEST_F(ReplicationSuite, testRead)
-//{
-    //std::array<char, 1024> buffer;
-    //// Receive greetings
-    //fgets(buffer.data(), buffer.size(), this->stream);
-    //// Send WRITE request
-    //fputs("WRITE The first line\n", this->stream);
-    //// Receive acknowledge
-    //fgets(buffer.data(), buffer.size(), this->stream);
-    //// Read the message again
-    //fputs("READ 0\n", this->stream);
-    //// Receive message text
-    //fgets(buffer.data(), buffer.size(), this->stream);
-    //// Verify the read message
-    //EXPECT_STREQ(buffer.data(), "2.0 MESSAGE 0 nobody/The first line\n") << "Failed to read the just written message";
-//}
+TEST_F(ReplicationSuite, testRead)
+{
+    std::array<char, 1024> buffer;
+    // Receive greetings
+    fgets(buffer.data(), buffer.size(), this->stream);
+    // Send WRITE request
+    fputs("WRITE The first line\n", this->stream);
+    // Receive acknowledge
+    fgets(buffer.data(), buffer.size(), this->stream);
+    // Read the message again
+    fputs("READ 0\n", this->stream);
+    // Receive message text
+    fgets(buffer.data(), buffer.size(), this->stream);
+    // Verify the read message
+    EXPECT_STREQ(buffer.data(), "2.0 MESSAGE 0 nobody/The first line\n") << "Failed to read the just written message";
+}
 
-//TEST_F(ReplicationSuite, testRead_wrongId)
-//{
-    //std::array<char, 1024> buffer;
-    //// Receive greetings
-    //fgets(buffer.data(), buffer.size(), this->stream);
-    //// Send WRITE request
-    //fputs("WRITE The first line\n", this->stream);
-    //// Receive acknowledge
-    //fgets(buffer.data(), buffer.size(), this->stream);
-    //// Read the message again
-    //fputs("READ 1\n", this->stream);
-    //// Receive message text
-    //fgets(buffer.data(), buffer.size(), this->stream);
-    //// Verify the read message
-    //EXPECT_STREQ(buffer.data(), "2.1 UNKNOWN 1 Record not found\n") << "The message ID 1 should be unknown";
-//}
+TEST_F(ReplicationSuite, testReplace)
+{
+    std::array<char, 1024> buffer;
+    // Receive greetings
+    fgets(buffer.data(), buffer.size(), this->stream);
+    // Send WRITE request
+    fputs("WRITE Headline\n", this->stream);
+    // Receive acknowledge
+    fgets(buffer.data(), buffer.size(), this->stream);
+    // Send WRITE request
+    fputs("WRITE The first line\n", this->stream);
+    // Receive acknowledge
+    fgets(buffer.data(), buffer.size(), this->stream);
+    // Write another record
+    fputs("WRITE The second line\n", this->stream);
+    // Receive acknowledge
+    fgets(buffer.data(), buffer.size(), this->stream);
+    // Write another record
+    fputs("REPLACE 1/The initial line\n", this->stream);
+    // Receive acknowledge
+    fgets(buffer.data(), buffer.size(), this->stream);
+    // Verify the replace message
+    EXPECT_STREQ(buffer.data(), "3.0 WROTE 1\n");
+    // Verify the file content
+    std::ifstream input("db.10200.txt");
+    EXPECT_TRUE(input.good()) << "Failed to open " << "db.10200.txt";
+    input.get(buffer.data(), buffer.size(), EOF);
+    EXPECT_STREQ(buffer.data(), "0/nobody/Headline\n1/nobody/The initial line\n2/nobody/The second line\n")
+        << "db.10200.txt" << " does not contain the desired line";
+}
 
-//TEST_F(ReplicationSuite, testRead_noBBFile)
-//{
-    //std::array<char, 1024> buffer;
-    //// Receive greetings
-    //fgets(buffer.data(), buffer.size(), this->stream);
-    //// Read the message again
-    //fputs("READ 0\n", this->stream);
-    //// Receive message text
-    //fgets(buffer.data(), buffer.size(), this->stream);
-    //// Verify the read message
-    //EXPECT_NE(nullptr, std::strstr(buffer.data(), "2.2 ERROR READ")) << "The bbfile should be not written yet";
-    //EXPECT_NE(nullptr, std::strstr(buffer.data(), "bbfile is not available")) << "The bbfile should be not written yet";
-//}
-
-//TEST_F(ReplicationSuite, testRead_malformed)
-//{
-    //std::array<char, 1024> buffer;
-    //// Receive greetings
-    //fgets(buffer.data(), buffer.size(), this->stream);
-    //// Send WRITE request
-    //fputs("WRITE The first line\n", this->stream);
-    //// Receive acknowledge
-    //fgets(buffer.data(), buffer.size(), this->stream);
-    //// Issue a malformed READ request
-    //fputs("READ a\n", this->stream);
-    //// Receive an error
-    //fgets(buffer.data(), buffer.size(), this->stream);
-    //// Verify the read message
-    //EXPECT_NE(nullptr, std::strstr(buffer.data(), "2.2 ERROR READ"))
-        //<< "The READ request shall contain a message ID: " << buffer.data();
-    //EXPECT_NE(nullptr, std::strstr(buffer.data(), "Request malformed"))
-        //<< "The READ request shall contain a message ID: " << buffer.data();
-//}
-
-//TEST_F(ReplicationSuite, testReplace)
-//{
-    //std::array<char, 1024> buffer;
-    //// Receive greetings
-    //fgets(buffer.data(), buffer.size(), this->stream);
-    //// Send WRITE request
-    //fputs("WRITE Headline\n", this->stream);
-    //// Receive acknowledge
-    //fgets(buffer.data(), buffer.size(), this->stream);
-    //// Send WRITE request
-    //fputs("WRITE The first line\n", this->stream);
-    //// Receive acknowledge
-    //fgets(buffer.data(), buffer.size(), this->stream);
-    //// Write another record
-    //fputs("WRITE The second line\n", this->stream);
-    //// Receive acknowledge
-    //fgets(buffer.data(), buffer.size(), this->stream);
-    //// Write another record
-    //fputs("REPLACE 1/The initial line\n", this->stream);
-    //// Receive acknowledge
-    //fgets(buffer.data(), buffer.size(), this->stream);
-    //// Verify the replace message
-    //EXPECT_STREQ(buffer.data(), "3.0 WROTE 1\n");
-    //// Verify the file content
-    //std::ifstream input(DEFAULT_BBFILE);
-    //EXPECT_TRUE(input.good()) << "Failed to open " << DEFAULT_BBFILE;
-    //input.get(buffer.data(), buffer.size(), EOF);
-    //EXPECT_STREQ(buffer.data(), "0/nobody/Headline\n1/nobody/The initial line\n2/nobody/The second line\n")
-        //<< DEFAULT_BBFILE << " does not contain the desired line";
-//}
-
-//TEST_F(ReplicationSuite, testReplace_changeUser)
-//{
-    //std::array<char, 1024> buffer;
-    //// Receive greetings
-    //fgets(buffer.data(), buffer.size(), this->stream);
-    //// Send WRITE request
-    //fputs("WRITE Headline\n", this->stream);
-    //// Receive acknowledge
-    //fgets(buffer.data(), buffer.size(), this->stream);
-    //// Send WRITE request
-    //fputs("WRITE The first line\n", this->stream);
-    //// Receive acknowledge
-    //fgets(buffer.data(), buffer.size(), this->stream);
-    //// Write another record
-    //fputs("WRITE The second line\n", this->stream);
-    //// Receive acknowledge
-    //fgets(buffer.data(), buffer.size(), this->stream);
-    //// Change user
-    //fputs("USER Mike\n", this->stream);
-    //// Receive acknowledge
-    //fgets(buffer.data(), buffer.size(), this->stream);
-    //// Replace the middle record
-    //fputs("REPLACE 1/The initial line\n", this->stream);
-    //// Receive acknowledge
-    //fgets(buffer.data(), buffer.size(), this->stream);
-    //// Verify the replace message
-    //EXPECT_STREQ(buffer.data(), "3.0 WROTE 1\n");
-    //// Verify the file content
-    //std::ifstream input(DEFAULT_BBFILE);
-    //EXPECT_TRUE(input.good()) << "Failed to open " << DEFAULT_BBFILE;
-    //input.get(buffer.data(), buffer.size(), EOF);
-    //EXPECT_STREQ(buffer.data(), "0/nobody/Headline\n1/Mike/The initial line\n2/nobody/The second line\n")
-        //<< DEFAULT_BBFILE << " does not contain the desired line";
-//}
+TEST_F(ReplicationSuite, testReplace_changeUser)
+{
+    std::array<char, 1024> buffer;
+    // Receive greetings
+    fgets(buffer.data(), buffer.size(), this->stream);
+    // Send WRITE request
+    fputs("WRITE Headline\n", this->stream);
+    // Receive acknowledge
+    fgets(buffer.data(), buffer.size(), this->stream);
+    // Send WRITE request
+    fputs("WRITE The first line\n", this->stream);
+    // Receive acknowledge
+    fgets(buffer.data(), buffer.size(), this->stream);
+    // Write another record
+    fputs("WRITE The second line\n", this->stream);
+    // Receive acknowledge
+    fgets(buffer.data(), buffer.size(), this->stream);
+    // Change user
+    fputs("USER Mike\n", this->stream);
+    // Receive acknowledge
+    fgets(buffer.data(), buffer.size(), this->stream);
+    // Replace the middle record
+    fputs("REPLACE 1/The initial line\n", this->stream);
+    // Receive acknowledge
+    fgets(buffer.data(), buffer.size(), this->stream);
+    // Verify the replace message
+    EXPECT_STREQ(buffer.data(), "3.0 WROTE 1\n");
+    // Verify the file content
+    std::ifstream input("db.10200.txt");
+    EXPECT_TRUE(input.good()) << "Failed to open " << "db.10200.txt";
+    input.get(buffer.data(), buffer.size(), EOF);
+    EXPECT_STREQ(buffer.data(), "0/nobody/Headline\n1/Mike/The initial line\n2/nobody/The second line\n")
+        << "db.10200.txt" << " does not contain the desired line";
+}
 
 //TEST_F(ReplicationSuite, testReplace_unknownId)
 //{
