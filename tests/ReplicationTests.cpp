@@ -242,34 +242,34 @@ TEST_F(ReplicationSuite, testReplace_changeUser)
         << "db.10200.txt" << " does not contain the desired line";
 }
 
-//TEST_F(ReplicationSuite, testReplace_unknownId)
-//{
-    //std::array<char, 1024> buffer;
-    //// Receive greetings
-    //fgets(buffer.data(), buffer.size(), this->stream);
-    //// Send WRITE request
-    //fputs("WRITE Headline\n", this->stream);
-    //// Receive acknowledge
-    //fgets(buffer.data(), buffer.size(), this->stream);
-    //// Send WRITE request
-    //fputs("WRITE The first line\n", this->stream);
-    //// Receive acknowledge
-    //fgets(buffer.data(), buffer.size(), this->stream);
-    //// Write another record
-    //fputs("WRITE The second line\n", this->stream);
-    //// Receive acknowledge
-    //fgets(buffer.data(), buffer.size(), this->stream);
-    //// Write another record
-    //fputs("REPLACE 3/The initial line\n", this->stream);
-    //// Receive acknowledge
-    //fgets(buffer.data(), buffer.size(), this->stream);
-    //// Verify the replace message
-    //EXPECT_STREQ(buffer.data(), "3.1 UNKNOWN 3\n");
-    //// Verify the unchanged file content
-    //std::ifstream input(DEFAULT_BBFILE);
-    //EXPECT_TRUE(input.good()) << "Failed to open " << DEFAULT_BBFILE;
-    //input.get(buffer.data(), buffer.size(), EOF);
-    //EXPECT_STREQ(buffer.data(), "0/nobody/Headline\n1/nobody/The first line\n2/nobody/The second line\n")
-        //<< DEFAULT_BBFILE << " does not contain the desired line";
-//}
+TEST_F(ReplicationSuite, testReplace_unknownId)
+{
+    std::array<char, 1024> buffer;
+    // Receive greetings
+    fgets(buffer.data(), buffer.size(), this->stream);
+    // Send WRITE request
+    fputs("WRITE Headline\n", this->stream);
+    // Receive acknowledge
+    fgets(buffer.data(), buffer.size(), this->stream);
+    // Send WRITE request
+    fputs("WRITE The first line\n", this->stream);
+    // Receive acknowledge
+    fgets(buffer.data(), buffer.size(), this->stream);
+    // Write another record
+    fputs("WRITE The second line\n", this->stream);
+    // Receive acknowledge
+    fgets(buffer.data(), buffer.size(), this->stream);
+    // Write another record
+    fputs("REPLACE 3/The initial line\n", this->stream);
+    // Receive acknowledge
+    fgets(buffer.data(), buffer.size(), this->stream);
+    // Verify the replace message
+    EXPECT_NE(nullptr, std::strstr(buffer.data(), "3.2 ERROR WRITE"));
+    // Verify the unchanged file content
+    std::ifstream input("db.10200.txt");
+    EXPECT_TRUE(input.good()) << "Failed to open " << "db.10200.txt";
+    input.get(buffer.data(), buffer.size(), EOF);
+    EXPECT_STREQ(buffer.data(), "0/nobody/Headline\n1/nobody/The first line\n2/nobody/The second line\n")
+        << "db.10200.txt" << " does not contain the desired line";
+}
 

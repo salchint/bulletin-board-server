@@ -91,7 +91,7 @@ void CmdReplace::execute()
     sout >> dummy;      // command REPLACE
     if (localReplaceOnly)
     {
-        sout >> dummy; // modifier LOCAL
+        sout >> dummy;  // modifier LOCAL
     }
     sout >> id;         // message ID
     sout >> seperator;  // seperator /

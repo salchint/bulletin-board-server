@@ -1,8 +1,8 @@
-//Filename:  CmdSuccessful.cpp
+//Filename:  CmdUnsuccessful.cpp
 
-#include "CmdSuccessful.h"
+#include "CmdUnsuccessful.h"
 
-void CmdSuccessful::execute()
+void CmdUnsuccessful::execute()
 {
     if (this->commandId != COMMAND_ID)
     {
@@ -35,5 +35,5 @@ void CmdSuccessful::execute()
         AcknowledgeQueue::TheOne(messageId)->add(false);
     }
 
-    AcknowledgeQueue::TheOne(messageId)->add(true);
+    AcknowledgeQueue::TheOne(messageId)->add(false);
 }
