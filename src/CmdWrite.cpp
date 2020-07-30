@@ -93,6 +93,7 @@ void CmdWrite::execute()
         }
 
         // Finally, the local write operation
+        debug_print(this, "Begin write operation...");
         RWAutoLock<WriteLock> guard (&globalRWLock);
         fout.seekp(0, std::ios_base::end);
         debug_print(this, "File pos ", fout.tellp());
@@ -102,6 +103,7 @@ void CmdWrite::execute()
         {
             fout << std::endl;
         }
+        debug_print(this, " ...done");
 
         fprintf(this->stream, "3.0 WROTE %lu\n", id);
         fflush(this->stream);

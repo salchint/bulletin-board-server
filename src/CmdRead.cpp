@@ -47,6 +47,7 @@ void CmdRead::execute()
             error_return(this, "Request malformed");
         }
 
+        debug_print(this, "Begin read operation...");
         RWAutoLock<ReadLock> guard (&globalRWLock);
         std::ifstream fin (Config::singleton().get_bbfile());
 
@@ -68,6 +69,7 @@ void CmdRead::execute()
             fprintf(this->stream, "2.1 UNKNOWN %s Record not found\n", id.data());
             fflush(this->stream);
         }
+        debug_print(this, " ...done");
     }
     catch (const BBServException& error)
     {
