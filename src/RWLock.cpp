@@ -2,6 +2,7 @@
 
 #include "RWLock.h"
 #include "AutoLock.h"
+#include "Config.h"
 
 void RWLock::aquire_read()
 {
@@ -23,6 +24,13 @@ void RWLock::aquire_read()
 void RWLock::release_read()
 {
     AutoLock guard (&this->conditionLock);
+
+    // For debugging purposes
+    if (Config::singleton().is_debug() && !Config::singleton().is_quick())
+    {
+        std::cout << "Waiting 3 s" << std::endl;
+        usleep(3000000);
+    }
 
     // Signal a possibly pending writer
     if (0 == this->readerCount--)
@@ -52,6 +60,13 @@ void RWLock::release_write()
 {
     AutoLock guard (&this->conditionLock);
     this->writerCount--;
+
+    // For debugging purposes
+    if (Config::singleton().is_debug() && !Config::singleton().is_quick())
+    {
+        std::cout << "Waiting 6 s" << std::endl;
+        usleep(6000000);
+    }
 
     // Signal a possibly pending writer
     if (0 < this->rWaitCount)

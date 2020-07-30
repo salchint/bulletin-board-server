@@ -39,7 +39,7 @@ public:
         if (!childId)
         {
             /**/
-            EXPECT_NE(-1, execlp(exe, exe, "-d", nullptr)) << "Failed to launch " << exe;
+            EXPECT_NE(-1, execlp(exe, exe, "-d", "-q", nullptr)) << "Failed to launch " << exe;
             /*/
             EXPECT_NE(-1, execlp(exe, exe, nullptr)) << "Failed to launch " << exe;
             /*/

@@ -35,14 +35,14 @@ public:
         childIds.push_back(fork());
         if (!childIds[childIds.size()-1])
         {
-            EXPECT_NE(-1, execlp(exe, exe, "-d", "-bdb.10100.txt", "-p9100", "-s10100", "127.0.0.1:10200", nullptr)) << "Failed to launch " << exe;
+            EXPECT_NE(-1, execlp(exe, exe, "-d", "-q", "-bdb.10100.txt", "-p9100", "-s10100", "127.0.0.1:10200", nullptr)) << "Failed to launch " << exe;
         }
         else
         {
             childIds.push_back(fork());
             if (!childIds[childIds.size()-1])
             {
-                EXPECT_NE(-1, execlp(exe, exe, "-d", "-bdb.10200.txt", "-p9200", "-s10200", "127.0.0.1:10100", nullptr)) << "Failed to launch " << exe;
+                EXPECT_NE(-1, execlp(exe, exe, "-d", "-q", "-bdb.10200.txt", "-p9200", "-s10200", "127.0.0.1:10100", nullptr)) << "Failed to launch " << exe;
             }
             else
             {
