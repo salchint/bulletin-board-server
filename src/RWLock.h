@@ -59,8 +59,8 @@ class WriteLock
         RWLock* rwLock {nullptr};
     public:
         WriteLock(RWLock* rwLock) : rwLock(rwLock) {}
-        void lock()   { this->rwLock->aquire_read(); }
-        void unlock()   { this->rwLock->release_read(); }
+        void lock()   { this->rwLock->aquire_write(); }
+        void unlock()   { this->rwLock->release_write(); }
 };
 
 template<class T>
