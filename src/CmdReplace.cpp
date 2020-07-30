@@ -2,6 +2,7 @@
 
 #include "CmdReplace.h"
 #include "CmdWrite.h"
+#include "RWLock.h"
 #include <cstring>
 #include <string>
 #include <string_view>
@@ -41,6 +42,8 @@ bool replace_record(std::istream& input, std::ostream& output, size_t id, std::s
 
 void CmdReplace::rewrite_bbfile(size_t id, std::string_view message)
 {
+    RWAutoLock<WriteLock> guard (&globalRWLock);
+
     // Backup the original bbfile
     auto origName { Config::singleton().get_bbfile() };
     auto backupName { origName + "~"};

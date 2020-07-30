@@ -8,6 +8,7 @@
 #include <fstream>
 #include <algorithm>
 #include "ConnectionQueue.h"
+#include "RWLock.h"
 
 size_t CmdWrite::update_message_number()
 {
@@ -92,6 +93,7 @@ void CmdWrite::execute()
         }
 
         // Finally, the local write operation
+        RWAutoLock<WriteLock> guard (&globalRWLock);
         fout.seekp(0, std::ios_base::end);
         debug_print(this, "File pos ", fout.tellp());
         fout << id << "/" << this->user << "/" << message.data();
