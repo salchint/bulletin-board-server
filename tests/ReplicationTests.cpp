@@ -23,6 +23,8 @@
 // Fixture
 class ReplicationSuite : public ::testing::Test
 {
+    constexpr static const char* const DEFAULT_CONFFILE { "bbserv.conf" };
+
 public:
     std::vector<int> childIds;
     int clientSocket {0};
@@ -31,6 +33,9 @@ public:
 public:
     ReplicationSuite()
     {
+        std::ofstream fout (DEFAULT_CONFFILE, fout.out | fout.trunc);
+        fout << "BBPORT=1234";
+
         constexpr auto exe { "./bbserv"};
         childIds.push_back(fork());
         if (!childIds[childIds.size()-1])
