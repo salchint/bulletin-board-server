@@ -354,4 +354,3 @@ TEST_F(IntegrationSuite, testReplace_unknownId)
     EXPECT_STREQ(buffer.data(), "0/nobody/Headline\n1/nobody/The first line\n2/nobody/The second line\n")
         << DEFAULT_BBFILE << " does not contain the desired line";
 }
-

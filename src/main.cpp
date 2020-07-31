@@ -83,6 +83,14 @@ int main(int argc, char *argv[])
         }
     }
 
+    if (0 == Config::singleton().get_bbfile().size())
+    {
+        std::cout << "ERROR - bbfile is not set" << std::endl;
+        std::cout << std::endl;
+        print_usage();
+        return 1;
+    }
+
     try
     {
         for (; optind < argc; ++optind)
