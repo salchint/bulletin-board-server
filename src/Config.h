@@ -5,6 +5,7 @@
 #include <iostream>
 #include <string>
 #include <sstream>
+#include <string_view>
 #include <unistd.h>
 #include <sys/types.h>
 #include <sys/syscall.h>
@@ -130,6 +131,10 @@ class Config
          *Read the contents of the config file.
          */
         void read_config();
+        /**
+         *Set the configuration file.
+         */
+        void set_bbconf(const std::string_view conf) { this->bbconf = conf; }
 
     private:
         void read_config_line(std::string line);

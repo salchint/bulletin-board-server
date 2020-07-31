@@ -1,3 +1,4 @@
+#include <iomanip>
 #include <iostream>
 #include <memory>
 #include <unistd.h>
@@ -48,8 +49,9 @@ int main(int argc, char *argv[])
 {
     Config::singleton().read_config();
 
-    const char* optionString { "hb:T:p:s:fdq" };
+    const char* optionString { "hb:T:p:s:fdqc:" };
     char option { '\0' };
+    auto rescan {false};
 
     while (-1 != (option = getopt(argc, argv, optionString))) {
         switch (option) {
@@ -78,6 +80,16 @@ int main(int argc, char *argv[])
             case 'q':
                 Config::singleton().set_quick(true);
                 break;
+            case 'c':
+                if (rescan)
+                {
+                    break;
+                }
+                Config::singleton().set_bbconf(optarg);
+                Config::singleton().read_config();
+                optind = 1;
+                rescan = true;
+                break;
             default:
                 break;
         }
@@ -90,6 +102,8 @@ int main(int argc, char *argv[])
         print_usage();
         return 1;
     }
+    debug_print(Config::singleton(), "bbfile is set to ",
+            std::quoted(Config::singleton().get_bbfile()));
 
     try
     {
