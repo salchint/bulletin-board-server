@@ -1,3 +1,4 @@
+#include <ios>
 #include <sys/socket.h>
 #include <sys/types.h>
 #include <netinet/in.h>
@@ -23,8 +24,9 @@
 class IntegrationSuite : public ::testing::Test
 {
 protected:
-    constexpr static const char* const DEFAULT_BBFILE { "bbfile.txt" };
-    constexpr static const char* const DEFAULT_NOFILE { "bbfile.txt.no" };
+    constexpr static const char* const DEFAULT_BBFILE { "bbfile.db" };
+    constexpr static const char* const DEFAULT_NOFILE { "bbfile.db.no" };
+    constexpr static const char* const DEFAULT_CONFFILE { "bbserv.conf" };
 
 public:
     int childId {0};
@@ -34,6 +36,9 @@ public:
 public:
     IntegrationSuite()
     {
+        std::ofstream fout (DEFAULT_CONFFILE, std::ios::out | std::ios::trunc);
+        fout << "BBFILE=" << DEFAULT_BBFILE << std::endl;
+
         constexpr auto exe { "./bbserv"};
         childId = fork();
         if (!childId)

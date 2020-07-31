@@ -44,7 +44,10 @@ void print_usage() {
 /**
  *The program's main entry point.
  */
-int main(int argc, char *argv[]) {
+int main(int argc, char *argv[])
+{
+    Config::singleton().read_config();
+
     const char* optionString { "hb:T:p:s:fdq" };
     char option { '\0' };
 
