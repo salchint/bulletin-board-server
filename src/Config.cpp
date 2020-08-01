@@ -141,7 +141,7 @@ void Config::read_config_line(std::string line)
 void Config::read_config()
 {
     std::ifstream fin (this->bbconf);
-    std::string line;
+    std::array<char, 1024> line;
 
     if (fin.fail())
     {
@@ -150,8 +150,7 @@ void Config::read_config()
 
     }
 
-    line.resize(1024);
-    std::memset(line.data(), 0, line.size());
+    line.fill('\0');
 
     for (;fin.getline(line.data(), line.size());)
     {
