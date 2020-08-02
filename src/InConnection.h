@@ -87,6 +87,7 @@ class InConnection
         std::unique_ptr<SocketResource> resources;
         std::shared_ptr<ConnectionQueue> connectionQueue;
         bool isNonblocking {false};
+        bool run {true};
 
     public:
         /**
@@ -103,6 +104,11 @@ class InConnection
          */
         void operate(/*const std::string_view& ipaddress,*/ in_port_t port,
                 std::shared_ptr<ConnectionQueue>& qu, bool isNonblocking = false);
+
+        /**
+         *Let the inherent thread stop gracefully.
+         */
+        void stop() { this->run = false; }
 
     protected:
         void open_incoming_conn(/*const std::string_view& ipaddress,*/ in_port_t port);

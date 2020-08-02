@@ -145,7 +145,7 @@ void InConnection::listen_for_clients()
     listen(resources->get_accept_socket(), Config::singleton().get_Tmax());
     debug_print(this, "Listening for incoming messages");
 
-    while (1)
+    for (;this->run;)
     {
         // Wait a limited ammount of time for incoming connections if the
         // socket is in non-blocking mode.

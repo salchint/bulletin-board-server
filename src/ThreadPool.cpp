@@ -26,6 +26,7 @@
 template<class... Ts> struct Overload : Ts... { using Ts::operator()...; };
 template<class... Ts> Overload(Ts...) -> Overload<Ts...>;
 
+static constexpr auto StopId {0xFFFF};
 
 /**
  *Print the supported commands as a welcome message.
@@ -193,7 +194,6 @@ static void* process(ThreadPool* pool, BroadcastCommand command)
     catch (const BBServException& error)
     {
         std::cout << error.what() << std::endl;
-
         return nullptr;
     }
 
@@ -225,9 +225,12 @@ static void* process(ThreadPool* pool, int clientSocket)
     }
     catch (const BBServException& error)
     {
-        std::cout << "Stop processing client request on socket "
-            << resources.get_clientSocket() << ": " << error.what()
-            << std::endl;
+        if (StopId != resources.get_clientSocket())
+        {
+            std::cout << "Stop processing client request on socket "
+                << resources.get_clientSocket() << ": " << error.what()
+                << std::endl;
+        }
         return nullptr;
     }
 
@@ -292,7 +295,7 @@ static void* thread_main(void* p)
 {
     auto pool { reinterpret_cast<ThreadPool*>(p) };
 
-    for (;;)
+    for (;pool->running();)
     {
         auto entry { pool->get_entry() };
         //debug_print(pool, "Got connection queue entry");
@@ -309,6 +312,9 @@ static void* thread_main(void* p)
             std::cout << error.what() << std::endl;
         }
     }
+
+    AcknowledgeQueue::TheOne(AcknowledgeQueue::StopPoolId)->add(true);
+    return nullptr;
 }
 
 /**
@@ -350,4 +356,16 @@ ConnectionQueue::Entry_t ThreadPool::get_entry() noexcept
 ConnectionQueue* ThreadPool::get_connection_queue() noexcept
 {
     return this->connectionQueue.get();
+}
+
+void ThreadPool::stop()
+{
+    this->run = false;
+
+    for (auto i{0ul}; i < this->size; ++i)
+    {
+        this->connectionQueue->add(StopId);
+    }
+
+    AcknowledgeQueue::TheOne(AcknowledgeQueue::StopPoolId)->check_success(this->size);
 }

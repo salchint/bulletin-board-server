@@ -16,6 +16,10 @@
 
 InConnection replicationConnection;
 InConnection inConnection;
+std::unique_ptr<ThreadPool> agents;
+std::unique_ptr<ThreadPool> replicationAgents;
+
+void signal_handler(int);
 
 /**
  *Forward the given peer definition to the configuration.
@@ -48,26 +52,8 @@ static void print_usage()
 }
 
 /**
- *Let the process exit upon catching SIGINT or SIGQUIT.
+ *Setup some service housekeeping.
  */
-void signal_handler(int sig)
-{
-    switch (sig)
-    {
-        case SIGINT:
-            debug_print(sig, "Exit by SIGINT");
-            exit(0);
-            break;
-        case SIGHUP:
-            debug_print(sig, "Reconfigure by SIGHUP");
-            exit(0);
-            break;
-        default:
-            break;
-    }
-}
-
-
 static void configure()
 {
     umask(022);
@@ -94,6 +80,56 @@ static void configure()
     // Publish my PID
     std::ofstream fout ("bbserv.pid");
     fout << getpid();
+
+    // Startup of threadpool operating on 's-port'
+    auto replicationQueue = std::make_shared<ConnectionQueue>();
+    replicationAgents = std::make_unique<ThreadPool>(1);
+    replicationAgents->operate(replicationQueue);
+    replicationConnection.operate(Config::singleton().get_sport(),
+            replicationQueue, true);
+
+    // Startup of threadpool operating on 'b-port'
+    auto connectionQueue = std::make_shared<ConnectionQueue>();
+    agents = std::make_unique<ThreadPool >(Config::singleton().get_Tmax());
+    agents->operate(connectionQueue);
+    inConnection.operate(Config::singleton().get_bport(), connectionQueue,
+            false);
+
+}
+
+/**
+ *Reset the server infrastruture.
+ */
+static void reinit()
+{
+    replicationAgents->stop();
+    replicationConnection.stop();
+    agents->stop();
+    inConnection.stop();
+    replicationAgents.reset();
+    agents.reset();
+}
+
+/**
+ *Let the process exit upon catching SIGINT or SIGQUIT.
+ */
+void signal_handler(int sig)
+{
+    switch (sig)
+    {
+        case SIGINT:
+            debug_print(sig, "Exit by SIGINT");
+            reinit();
+            exit(0);
+            break;
+        case SIGHUP:
+            debug_print(sig, "Reconfigure by SIGHUP");
+            reinit();
+            configure();
+            break;
+        default:
+            break;
+    }
 }
 
 /**
@@ -168,21 +204,6 @@ int main(int argc, char *argv[])
 
         // Configure server
         configure();
-
-        // Startup of threadpool operating on 's-port'
-        auto replicationQueue = std::make_shared<ConnectionQueue>();
-        ThreadPool replicationAgents(1);
-        replicationAgents.operate(replicationQueue);
-        replicationConnection.operate(Config::singleton().get_sport(),
-                replicationQueue, true);
-
-        // Startup of threadpool operating on 'b-port'
-        auto connectionQueue = std::make_shared<ConnectionQueue>();
-        ThreadPool agents(Config::singleton().get_Tmax());
-        agents.operate(connectionQueue);
-        inConnection.operate(Config::singleton().get_bport(), connectionQueue,
-                false);
-
     }
     catch (const BBServException& error)
     {
