@@ -37,7 +37,8 @@ file) and a reference to the Connection Queue.
 
 This way the network connection to the clients or sibling bbserv instances is
 completely transparent to the Thread Pool. Only the information about the socket
-is transported and the broadcast commands.
+representing the incoming client connection or the broadcast command
+representing the to be sent request is given.
 
 Connection Queue
 ~~~~~~~~~~~~~~~~
@@ -63,6 +64,28 @@ agent can handle this client's commands.
 Each Input Connection instance is run in its own thread context, which is not
 part of the Thread Pool. Hence the main-thread is kept free for user input on
 its local console as long as it is not run as a daemon.
+
+Broadcast Commands
+~~~~~~~~~~~~~~~~~~
+
+Broadcast Commands are used in the use case of data replication. The Coordinator
+creates them in order to send multiple requests at the same time. This needs to
+be done when the Coordinator asks the Participants for acknowledging PRECOMMIT
+and COMMIT operations.
+
+The Participants' replies are handled in ACK command objects in an asynchronous
+way. Every positive or negative ACK reply is collected in the Acknowledge Queue,
+which is, similarly to the Connection Queue, a thread-safe FIFO data structure.
+Upon inserting an acknowledgment, the active Coordinator is signaled, which
+continues waiting if there are still acknowledgments pending and if the timeout
+has not elapsed yet. Else it continues with the next step according to the
+two-phase commit procedure.
+
+Acknowledge Queue
+~~~~~~~~~~~~~~~~~
+
+The Acknowledge Queue is the link between the worker thread that represents the
+Coordinator and the ACK command, which is processing one Participant's reply.
 
 Command Objects for data replication
 ------------------------------------
@@ -106,14 +129,12 @@ through the PRECOMMIT command and "0" or "1" to indicate failure or success.
 SUCCESSFULL
 ~~~~~~~~~~~
 
-Receiver:: Coordinator, Participant
+Receiver:: Coordinator
 
-Trigger::
- * Participant has processed the WRITE or REPLACE command successfully.
- * Coordinator has received SUCCESSFULL commands from all Participants.
+Trigger:: Participant has processed the WRITE or REPLACE command successfully.
 
 Payload:: The server-generated identifier of the WRITE/REPLACE command, which
-had to be done.
+has been completed successfully.
 
 UNSUCCESSFULL
 ~~~~~~~~~~~~~
@@ -126,15 +147,7 @@ Trigger::
    Participants or awaiting a Participant's reply timed out.
 
 Payload:: The server-generated identifier of the WRITE/REPLACE command, which
-had to be done.
-
-ABORT
-~~~~~
-
-Receiver:: Participant
-
-Trigger:: Coordinator has received one or more negative acknowledgments to
-PRECOMMIT or awaiting it timed out.
+has failed to complete.
 
 Multicasting
 ~~~~~~~~~~~~
@@ -146,10 +159,10 @@ together with all the peers in the Connection Queue.  Hence sending the
 broadcast-command (e.g. PRECOMMIT) is dispatched to Thread Pool again and
 processed in parallel.
 
-In addition, the initiating Command Object provides an instance of Acknowledge
-Queue, which is used to collect all the replies from the peers. The initiating
-Command Object uses it to determine if it can process further or needs to
-abort/undo the current command.
+In addition, a globally accessible instance of Acknowledge Queue, which is used
+to collect all the replies from the peers belonging to the active WRITE/REPLACE
+operation is setup. The initiating Command Object uses it to determine if it can
+process further or needs to abort/undo the current command.
 
 Data consistency
 ~~~~~~~~~~~~~~~~
