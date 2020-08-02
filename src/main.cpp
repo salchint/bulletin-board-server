@@ -1,9 +1,13 @@
 #include <iomanip>
 #include <iostream>
+#include <fstream>
 #include <memory>
 #include <unistd.h>
 #include <pthread.h>
 #include <string>
+#include <sys/types.h>
+#include <sys/stat.h>
+#include <signal.h>
 #include "Config.h"
 #include "InConnection.h"
 #include "ThreadPool.h"
@@ -16,7 +20,7 @@ InConnection inConnection;
 /**
  *Forward the given peer definition to the configuration.
  */
-void add_peer(std::string peer)
+static void add_peer(std::string peer)
 {
     Config::singleton().add_peer(peer);
 }
@@ -24,7 +28,8 @@ void add_peer(std::string peer)
 /**
  *Print the program's how-to-use to stdout.
  */
-void print_usage() {
+static void print_usage()
+{
     std::cout << "bbserv - Bulletin Board Server" << std::endl;
     std::cout << std::endl;
     std::cout << "Usage: bbserv [arguments] [peer..]" << std::endl;
@@ -40,6 +45,55 @@ void print_usage() {
     std::cout << "  -f (with no argument) forces daemon behavior to false." << std::endl;
     std::cout << "  -d (with no argument) forces debugging facilities to true." << std::endl;
     std::cout << "  -q (with no argument) disables debug-prolonged I/O." << std::endl;
+}
+
+/**
+ *Let the process exit upon catching SIGINT or SIGQUIT.
+ */
+void signal_handler(int sig)
+{
+    switch (sig)
+    {
+        case SIGINT:
+            debug_print(sig, "Exit by SIGINT");
+            exit(0);
+            break;
+        case SIGHUP:
+            debug_print(sig, "Reconfigure by SIGHUP");
+            exit(0);
+            break;
+        default:
+            break;
+    }
+}
+
+
+static void configure()
+{
+    umask(022);
+    signal(SIGINT, signal_handler);
+    signal(SIGHUP, signal_handler);
+
+    if (Config::singleton().is_daemon())
+    {
+        // Enter a new session and get rid of the controlling terminal
+        auto pid {fork()};
+        if (0 == pid)
+        {
+            setsid();
+        }
+        else
+        {
+            _exit(0);
+        }
+
+        // Redirect stdout
+        freopen("bbserv.log", "a", stdout);
+    }
+
+    // Publish my PID
+    std::ofstream fout ("bbserv.pid");
+    fout << getpid();
 }
 
 /**
@@ -111,6 +165,9 @@ int main(int argc, char *argv[])
         {
             add_peer(argv[optind]);
         }
+
+        // Configure server
+        configure();
 
         // Startup of threadpool operating on 's-port'
         auto replicationQueue = std::make_shared<ConnectionQueue>();
