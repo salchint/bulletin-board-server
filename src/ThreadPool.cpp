@@ -9,6 +9,7 @@
 #include <cstdlib>
 #include <sstream>
 #include <iomanip>
+#include <variant>
 #include <vector>
 #include <array>
 #include <optional>
@@ -310,6 +311,11 @@ static void* thread_main(void* p)
         catch (const BBServException& error)
         {
             std::cout << error.what() << std::endl;
+        }
+        catch (const std::bad_variant_access& error)
+        {
+            debug_print(pool, "Terminate worker thread: ", error.what());
+            break;
         }
     }
 

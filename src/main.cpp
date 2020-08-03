@@ -14,10 +14,12 @@
 #include "ConnectionQueue.h"
 #include "AutoLock.h"
 
-InConnection replicationConnection;
-InConnection inConnection;
+std::unique_ptr<InConnection> replicationConnection;
+std::unique_ptr<InConnection> inConnection;
 std::unique_ptr<ThreadPool> agents;
 std::unique_ptr<ThreadPool> replicationAgents;
+
+static auto initialized {false};
 
 void signal_handler(int);
 
@@ -57,7 +59,7 @@ static void print_usage()
 static void configure()
 {
     umask(022);
-    signal(SIGINT, signal_handler);
+    signal(SIGQUIT, signal_handler);
     signal(SIGHUP, signal_handler);
 
     if (Config::singleton().is_daemon())
@@ -85,16 +87,19 @@ static void configure()
     auto replicationQueue = std::make_shared<ConnectionQueue>();
     replicationAgents = std::make_unique<ThreadPool>(1);
     replicationAgents->operate(replicationQueue);
-    replicationConnection.operate(Config::singleton().get_sport(),
+    replicationConnection = std::make_unique<InConnection>();
+    replicationConnection->operate(Config::singleton().get_sport(),
             replicationQueue, true);
 
     // Startup of threadpool operating on 'b-port'
     auto connectionQueue = std::make_shared<ConnectionQueue>();
     agents = std::make_unique<ThreadPool >(Config::singleton().get_Tmax());
     agents->operate(connectionQueue);
-    inConnection.operate(Config::singleton().get_bport(), connectionQueue,
-            false);
+    inConnection = std::make_unique<InConnection>();
+    inConnection->operate(Config::singleton().get_bport(), connectionQueue,
+            true);
 
+    initialized = true;
 }
 
 /**
@@ -102,12 +107,21 @@ static void configure()
  */
 static void reinit()
 {
+    initialized = false;
+
     replicationAgents->stop();
-    replicationConnection.stop();
+    replicationConnection->stop();
     agents->stop();
-    inConnection.stop();
+    inConnection->stop();
+
     replicationAgents.reset();
     agents.reset();
+    replicationConnection.reset();
+    inConnection.reset();
+
+    Config::singleton().clear_peers();
+
+    usleep(Config::singleton().get_network_timeout_ms() * 1000 * 1);
 }
 
 /**
@@ -117,13 +131,18 @@ void signal_handler(int sig)
 {
     switch (sig)
     {
-        case SIGINT:
-            debug_print(sig, "Exit by SIGINT");
+        case SIGQUIT:
+            debug_print(sig, "Exit by SIGQUIT");
             reinit();
             exit(0);
             break;
         case SIGHUP:
             debug_print(sig, "Reconfigure by SIGHUP");
+            if (!initialized)
+            {
+                std::cout << "Skip reconfiguration" << std::endl;
+                break;
+            }
             reinit();
             configure();
             break;
@@ -212,6 +231,7 @@ int main(int argc, char *argv[])
 
     std::cout << "Press ENTER to quit" << std::endl;
     std::cin.ignore(std::numeric_limits<std::streamsize>::max(), '\n');
+    reinit();
 
     return 0;
 }

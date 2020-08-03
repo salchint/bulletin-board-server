@@ -11,6 +11,7 @@
 #include <errno.h>
 #include <pthread.h>
 #include "Config.h"
+#include "AcknowledgeQueue.h"
 
 /**
  *Data passed on to the thread/context.
@@ -198,6 +199,8 @@ void InConnection::listen_for_clients()
     debug_print(this, "Stop listening on socket ", resources->get_accept_socket());
     //close(this->acceptSocket);
     //this->acceptSocket = 0;
+
+    AcknowledgeQueue::TheOne(StopId)->add(true);
 }
 
 bool InConnection::is_nonblocking()
@@ -205,3 +208,9 @@ bool InConnection::is_nonblocking()
     return this->isNonblocking;
 }
 
+void InConnection::stop()
+{
+    this->run = false;
+    this->resources.reset();
+    AcknowledgeQueue::TheOne(StopId)->check_success(1);
+}
