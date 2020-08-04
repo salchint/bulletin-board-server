@@ -4,11 +4,15 @@
 #include <cstring>
 #include <iomanip>
 #include <string>
+#include <sstream>
 #include <string_view>
 #include <fstream>
 #include <algorithm>
+#include <variant>
 #include "ConnectionQueue.h"
+#include "CmdBuilder.h"
 #include "RWLock.h"
+#include "UndoStore.h"
 
 size_t CmdWrite::update_message_number()
 {
@@ -62,10 +66,12 @@ void CmdWrite::execute()
 
     auto localWriteOnly { prepareLocalOperation(message) };
 
+    auto id {0ul};
+
     try
     {
         // Get a new message ID and open the DB file
-        auto id { update_message_number() };
+        id = update_message_number();
         std::fstream fout (Config::singleton().get_bbfile());
 
         // Create the DB file if needed
@@ -93,9 +99,15 @@ void CmdWrite::execute()
             }
         }
 
-        // Finally, the local write operation
         debug_print(this, "Begin write operation...");
         RWAutoLock<WriteLock> guard (&globalRWLock);
+
+        // Backup the original bbfile
+        auto origName { Config::singleton().get_bbfile() };
+        auto backupName { origName + "~"};
+        std::rename(origName.data(), backupName.data());
+
+        // Finally, the local write operation
         fout.seekp(0, std::ios_base::end);
         debug_print(this, "File pos ", fout.tellp());
         fout << id << "/" << this->user << "/" << message.data();
@@ -104,16 +116,45 @@ void CmdWrite::execute()
         {
             fout << std::endl;
         }
+
+        guard.unlock();
         debug_print(this, " ...done");
 
         fprintf(this->stream, "3.0 WROTE %lu\n", id);
         fflush(this->stream);
+
+        if (localWriteOnly)
+        {
+            UndoStore::singleton().set(*this);
+        }
+        else
+        {
+            UndoStore::singleton().clear();
+        }
     }
     catch (const BBServException& error)
     {
-        // TODO undo
+        broadcast_asynchronous(this, "UNSUCCESSFUL", "", id, "");
 
+        debug_print(this, error.what());
         fprintf(this->stream, "3.2 ERROR WRITE %s\n", error.what());
         fflush(this->stream);
+    }
+}
+
+void CmdWrite::undo()
+{
+    try
+    {
+        debug_print(this, "Begin undo operation...");
+        RWAutoLock<WriteLock> guard (&globalRWLock);
+
+        restore_backup(this);
+        debug_print(this, "...undone");
+        UndoStore::singleton().clear();
+    }
+    catch (const BBServException& error)
+    {
+        std::cout << error.what() << std::endl;
     }
 }
