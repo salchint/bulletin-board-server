@@ -2,6 +2,7 @@
 
 #pragma once
 
+#include <ios>
 #include <string>
 #include "SessionResources.h"
 #include "Config.h"
@@ -19,6 +20,7 @@ class CmdWrite
         const char* line {nullptr};
         std::string user;
         ConnectionQueue* connectionQueue {nullptr};
+        std::ios::pos_type lastLinePos {-1};
 
     public:
         /**
@@ -63,6 +65,11 @@ class CmdWrite
          * Retrieve the next free message number and update the storage immediately.
          */
         size_t update_message_number();
+
+        /**
+         *Open the bbfile and create it if needed.
+         */
+        void open_db(std::fstream& fout);
 
 };
 
