@@ -72,6 +72,8 @@ void CmdReplace::rewrite_bbfile(size_t id, std::string_view message)
     }
     else
     {
+        broadcast_asynchronous(this, "UNSUCCESSFUL", "", id, "");
+
         fprintf(this->stream, "3.1 UNKNOWN %ld\n", id);
     }
 }
